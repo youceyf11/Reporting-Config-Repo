@@ -20,9 +20,9 @@ jobs:
         env:
           ALLOW_ANONYMOUS_LOGIN: "yes"
         ports:
-          - 2181:2181
+          - 2181:2181    
         options: >-
-          --health-cmd="bash -ec 'exec 3<>/dev/tcp/127.0.0.1/2181; echo ruok >&3; cat <&3 | grep imok'"
+          --health-cmd="nc -z 127.0.0.1 2181"
           --health-interval=10s --health-timeout=5s --health-retries=12
 
       kafka:

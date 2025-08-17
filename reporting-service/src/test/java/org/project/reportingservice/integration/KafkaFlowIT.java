@@ -6,13 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.test.annotation.DirtiesContext;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-
-import org.testcontainers.containers.KafkaContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
+import org.springframework.test.context.ActiveProfiles;
 
 import org.awaitility.Awaitility;
 
@@ -25,19 +19,10 @@ import org.project.reportingservice.ReportingServiceApplication;
 import org.project.reportingservice.service.ReportingService;
 import org.project.issueevents.events.IssueUpsertedEvent;
 
-@Testcontainers
 @SpringBootTest(classes = ReportingServiceApplication.class)
 @DirtiesContext
+@ActiveProfiles("ci")
 public class KafkaFlowIT {
-
-  @Container
-  static final KafkaContainer kafka =
-      new KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.5.1"));
-
-  @DynamicPropertySource
-  static void kafkaProps(DynamicPropertyRegistry r) {
-    r.add("spring.kafka.bootstrap-servers", kafka::getBootstrapServers);
-  }
 
   @Autowired
   private KafkaTemplate<String, IssueUpsertedEvent> kafkaTemplate;

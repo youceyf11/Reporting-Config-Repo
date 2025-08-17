@@ -1,0 +1,51 @@
+name: CodeQL
+
+on:
+  push:
+    branches: ["main" , "release/*"]
+  pull_request:
+    branches: ["main"]
+  schedule:
+    - cron: '0 2 * * 1' # chaque lundi à 02:00 UTC
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+jobs:
+  analyze:
+    name: Analyze (CodeQL)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'java' ]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          # packs: codeql/java-queries@latest # optionnel si tu veux des règles supplémentaires
+
+      - name: Autobuild (Java/Maven)
+        uses: github/codeql-action/autobuild@v3
+
+      # Si l'autobuild échoue, décommente ce bloc et commente l'étape Autobuild ci-dessus
+      # - name: Build with Maven (fallback)
+      #   uses: actions/setup-java@v4
+      #   with:
+      #     distribution: 'temurin'
+      #     java-version: '17'
+      #     cache: 'maven'
+      # - run: mvn -B -DskipTests package
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"

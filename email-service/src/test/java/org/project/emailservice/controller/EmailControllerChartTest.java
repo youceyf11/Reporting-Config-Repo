@@ -12,6 +12,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.MultipartBodyBuilder;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.reactive.server.WebTestClient;
 import org.springframework.util.MultiValueMap;
 import reactor.core.publisher.Mono;
@@ -19,6 +20,7 @@ import reactor.core.publisher.Mono;
 import static org.springframework.web.reactive.function.BodyInserters.fromMultipartData;
 
 @WebFluxTest(controllers = EmailController.class)
+@ActiveProfiles("test")
 class EmailControllerChartTest {
 
     @Autowired WebTestClient client;

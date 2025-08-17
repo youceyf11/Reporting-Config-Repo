@@ -1,0 +1,55 @@
+name: Dependency Check
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+  schedule:
+    - cron: '0 3 * * 1' # chaque lundi 03:00 UTC
+
+permissions:
+  contents: read
+
+jobs:
+  depcheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      - name: Run OWASP Dependency-Check (Maven)
+        run: |
+          mvn -B -U org.owasp:dependency-check-maven:check \
+            -Dformat=JSON -Dformat=HTML -DfailBuildOnCVSS=7
+
+      - name: Collect Dependency-Check reports
+        if: always()
+        run: |
+          mkdir -p depcheck-artifacts
+          # copie tous les rapports de tous les modules (multi-module friendly)
+          while IFS= read -r d; do
+            mod=$(echo "$d" | sed -E 's#^\./([^/]+).*#\1#');
+            mkdir -p "depcheck-artifacts/$mod"
+            cp -a "$d"/* "depcheck-artifacts/$mod/" || true
+          done < <(find . -type d -path '*/target/dependency-check-report')
+          # Affiche l'arborescence collectée pour debug
+          find depcheck-artifacts -maxdepth 2 -type f -printf '%P\n' | sort || true
+
+      - name: Upload Dependency-Check artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-check-reports
+          path: depcheck-artifacts
+          if-no-files-found: warn
+          retention-days: 7

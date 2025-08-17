@@ -7,14 +7,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.r2dbc.core.DatabaseClient;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.reactive.server.WebTestClient;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 import reactor.core.publisher.Flux;
 
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import reactor.core.publisher.Mono;
 
@@ -23,25 +20,10 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
-@Testcontainers
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+@ActiveProfiles("ci")
 public class ReportingServicePGIntegrationTest {
-
-    @Container
-    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine")
-            .withDatabaseName("reporting")
-            .withUsername("test")
-            .withPassword("test")
-            .withReuse(false);
-
-    @DynamicPropertySource
-    static void registerPgProps(DynamicPropertyRegistry registry) {
-        String r2dbcUrl = String.format("r2dbc:postgresql://%s:%d/%s", postgres.getHost(), postgres.getFirstMappedPort(), postgres.getDatabaseName());
-        registry.add("spring.r2dbc.url", () -> r2dbcUrl);
-        registry.add("spring.r2dbc.username", postgres::getUsername);
-        registry.add("spring.r2dbc.password", postgres::getPassword);
-    }
 
     @Autowired
     DatabaseClient databaseClient;
@@ -52,15 +34,7 @@ public class ReportingServicePGIntegrationTest {
     @MockBean
     JiraClient jiraClient;
 
-    @AfterAll
-    static void tearDown() {
-        if (postgres != null && postgres.isRunning()) {
-            postgres.stop();
-            postgres.close();
-        }
-    }
-
-    @BeforeEach 
+    @BeforeEach
     void setUpSchema() {
         // Schema matching production jira_issue table structure
         databaseClient.sql("CREATE TABLE IF NOT EXISTS jira_issue (" +
@@ -92,6 +66,27 @@ public class ReportingServicePGIntegrationTest {
                 "quota_per_project VARCHAR(255))").then().block();
     }
 
+    @BeforeEach
+    void setUp() {
+        // Setup mock data for Jira client
+        IssueSimpleDto issue1 = IssueSimpleDto.builder()
+                .issueKey("SCRUM-1")
+                .assignee("alice@company.com")
+                .timeSpentSeconds(28800L) // 8 hours
+                .resolved(LocalDateTime.of(2025, 8, 15, 10, 30))
+                .build();
+
+        IssueSimpleDto issue2 = IssueSimpleDto.builder()
+                .issueKey("SCRUM-2")
+                .assignee("bob@company.com")
+                .timeSpentSeconds(43200L) // 12 hours
+                .resolved(LocalDateTime.of(2025, 8, 15, 14, 30))
+                .build();
+
+        when(jiraClient.fetchProjectIssues(anyString(), anyInt()))
+                .thenReturn(Flux.fromIterable(Arrays.asList(issue1, issue2)));
+    }
+
     @Test
     @Order(1)
     void saveAndRetrieveIssue_CRUD() {
@@ -118,11 +113,6 @@ public class ReportingServicePGIntegrationTest {
     @Test
     @Order(2)
     void monthlyStatsEndpoint_returnsAggregateFromDB() {
-        // Mock JiraClient to return test data
-        IssueSimpleDto issue1 = new IssueSimpleDto("TEST-2", "Bob", 28800L, "2025-08-15T10:30:00");
-        IssueSimpleDto issue2 = new IssueSimpleDto("TEST-3", "Charlie", 43200L, "2025-08-15T14:30:00");
-        when(jiraClient.fetchProjectIssues(anyString(), anyInt())).thenReturn(Flux.fromIterable(Arrays.asList(issue1, issue2)));
-
         webTestClient.get()
                 .uri("/api/reporting/monthly/stats?projectKey=PROJ")
                 .exchange()

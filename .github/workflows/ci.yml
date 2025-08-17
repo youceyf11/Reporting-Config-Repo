@@ -136,15 +136,17 @@ jobs:
       - name: Build & push multi-module images
         run: |
           TAG=${GITHUB_SHA::7}
+          OWNER=${{ github.repository_owner }}
+          OWNER=${OWNER,,}  # Convert to lowercase
           for svc in jira-fetch-service reporting-service chart-service email-service excel-service gateway-service discovery-service; do
             docker build \
-              -t ghcr.io/${{ github.repository_owner }}/${svc}:${TAG} \
-              -t ghcr.io/${{ github.repository_owner }}/${svc}:${GITHUB_SHA} \
-              -t ghcr.io/${{ github.repository_owner }}/${svc}:latest \
+              -t ghcr.io/${OWNER}/${svc}:${TAG} \
+              -t ghcr.io/${OWNER}/${svc}:${GITHUB_SHA} \
+              -t ghcr.io/${OWNER}/${svc}:latest \
               ./${svc}
-            docker push ghcr.io/${{ github.repository_owner }}/${svc}:${TAG}
-            docker push ghcr.io/${{ github.repository_owner }}/${svc}:${GITHUB_SHA}
-            docker push ghcr.io/${{ github.repository_owner }}/${svc}:latest
+            docker push ghcr.io/${OWNER}/${svc}:${TAG}
+            docker push ghcr.io/${OWNER}/${svc}:${GITHUB_SHA}
+            docker push ghcr.io/${OWNER}/${svc}:latest
           done
 
   trivy-scan:

@@ -86,19 +86,19 @@ jobs:
             if [ "${FORCE_ENV_OVERWRITE:-false}" = "true" ] || [ ! -f "${{ vars.APP_DIR }}/.env" ]; then
               printf '%s\n' \
                 "IMAGE_NAMESPACE=youceyf11" \
-                "JIRA_BASE_URL=${JIRA_BASE_URL}" \
-                "JIRA_USERNAME=${JIRA_USERNAME}" \
-                "JIRA_API_TOKEN=${JIRA_API_TOKEN}" \
-                "SPRING_R2DBC_URL=${SPRING_R2DBC_URL}" \
-                "SPRING_R2DBC_USERNAME=${SPRING_R2DBC_USERNAME}" \
-                "SPRING_R2DBC_PASSWORD=${SPRING_R2DBC_PASSWORD}" \
-                "RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER}" \
-                "RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS}" \
-                "GMAIL_USERNAME=${GMAIL_USERNAME}" \
-                "GMAIL_PASSWORD=${GMAIL_PASSWORD}" \
-                "POSTGRES_DB=${POSTGRES_DB}" \
-                "POSTGRES_USER=${POSTGRES_USER}" \
-                "POSTGRES_PASSWORD=${POSTGRES_PASSWORD}" \
+                "JIRA_BASE_URL=https://youceyf11.atlassian.net" \
+                "JIRA_USERNAME=Youssef.Ouriniche@email.edu.ma" \
+                "JIRA_API_TOKEN=" \
+                "SPRING_R2DBC_URL=r2dbc:postgresql://postgres:5432/jira_db" \
+                "SPRING_R2DBC_USERNAME=jira" \
+                "SPRING_R2DBC_PASSWORD=postgres" \
+                "RABBITMQ_DEFAULT_USER=guest" \
+                "RABBITMQ_DEFAULT_PASS=guest" \
+                "GMAIL_USERNAME=youceyf11@gmail.com" \
+                "GMAIL_PASSWORD=" \
+                "POSTGRES_DB=jira_db" \
+                "POSTGRES_USER=jira" \
+                "POSTGRES_PASSWORD=postgres" \
                 "" \
                 "# Ports (host:container)" \
                 "JIRA_FETCH_SERVICE_PORT=8081" \

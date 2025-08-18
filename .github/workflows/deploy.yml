@@ -1,0 +1,166 @@
+# name: Deploy to EC2
+#
+# Triggers:
+# - Manual via workflow_dispatch
+# - On push to main
+#
+# Requirements:
+# Repo Variables (Settings -> Secrets and variables -> Actions -> Variables):
+#   REGISTRY=ghcr.io
+#   IMAGE_NAMESPACE=<owner lowercase> (e.g., youceyf11)
+#   APP_DIR=/opt/reporting-app
+#   SERVICES="jira-fetch-service reporting-service chart-service email-service excel-service gateway-service discovery-service"
+# Repo Secrets (Settings -> Secrets and variables -> Actions -> Secrets):
+#   SSH_HOST=<EC2 public IP>
+#   SSH_USER=ubuntu
+#   SSH_KEY=<private key contents of ~/.ssh/id_ci>
+#   SSH_KNOWN_HOSTS=<output of ssh-keyscan -H <EC2 IP>>
+
+name: Deploy
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Prepare compose for production
+        run: |
+          mkdir -p deploy
+          # Ensure required variables are present
+          : "${{ vars.REGISTRY }}" "${{ vars.IMAGE_NAMESPACE }}" "${{ vars.APP_DIR }}"
+          echo "Using registry ${{ vars.REGISTRY }} and namespace ${{ vars.IMAGE_NAMESPACE }}"
+
+      - name: Upload compose.prod.yml to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: 22
+          source: "deploy/compose.prod.yml"
+          target: "${{ vars.APP_DIR }}"
+
+      - name: Create .env on server if missing (placeholder)
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          # Non-sensitive values from Repository Variables (Actions -> Variables)
+          JIRA_BASE_URL: ${{ vars.JIRA_BASE_URL }}
+          JIRA_USERNAME: ${{ vars.JIRA_USERNAME }}
+          SPRING_R2DBC_URL: ${{ vars.SPRING_R2DBC_URL }}
+          SPRING_R2DBC_USERNAME: ${{ vars.SPRING_R2DBC_USERNAME }}
+          RABBITMQ_DEFAULT_USER: ${{ vars.RABBITMQ_DEFAULT_USER }}
+          GMAIL_USERNAME: ${{ vars.GMAIL_USERNAME }}
+          # Control flag to force overwrite of .env (set in Actions -> Variables)
+          FORCE_ENV_OVERWRITE: ${{ vars.FORCE_ENV_OVERWRITE }}
+          # Sensitive values from Repository Secrets (Actions -> Secrets)
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+          SPRING_R2DBC_PASSWORD: ${{ secrets.SPRING_R2DBC_PASSWORD }}
+          RABBITMQ_DEFAULT_PASS: ${{ secrets.RABBITMQ_DEFAULT_PASS }}
+          GMAIL_PASSWORD: ${{ secrets.GMAIL_PASSWORD }}
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: 22
+          script: |
+            set -euo pipefail
+            mkdir -p "${{ vars.APP_DIR }}"
+            if [ "${FORCE_ENV_OVERWRITE:-false}" = "true" ] || [ ! -f "${{ vars.APP_DIR }}/.env" ]; then
+              cat > "${{ vars.APP_DIR }}/.env" << EOF
+              JIRA_BASE_URL=${JIRA_BASE_URL}
+              JIRA_USERNAME=${JIRA_USERNAME}
+              JIRA_API_TOKEN=${JIRA_API_TOKEN}
+              SPRING_R2DBC_URL=${SPRING_R2DBC_URL}
+              SPRING_R2DBC_USERNAME=${SPRING_R2DBC_USERNAME}
+              SPRING_R2DBC_PASSWORD=${SPRING_R2DBC_PASSWORD}
+              RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER}
+              RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS}
+              GMAIL_USERNAME=${GMAIL_USERNAME}
+              GMAIL_PASSWORD=${GMAIL_PASSWORD}
+
+              # Ports (host:container)
+              JIRA_FETCH_SERVICE_PORT=8081
+              REPORTING_SERVICE_PORT=8082
+              CHART_SERVICE_PORT=8083
+              EMAIL_SERVICE_PORT=8084
+              EXCEL_SERVICE_PORT=8085
+              REDIS_PORT=6379
+              RABBITMQ_PORT=5672
+              RABBITMQ_MANAGEMENT_PORT=15672
+              POSTGRES_PORT=5432
+              KAFKA_PORT=9092
+
+              # Service URLs
+              JIRA_FETCH_BASE_URL=http://jira-fetch-service:8081
+              REPORTING_SERVICE_URL=http://reporting-service:8082
+              EOF
+              echo ".env created/updated at ${{ vars.APP_DIR }}/.env"
+            else
+              echo ".env already exists; leaving as-is"
+            fi
+
+      - name: Login to GHCR on the server and deploy
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          REGISTRY: ${{ vars.REGISTRY }}
+          IMAGE_NAMESPACE: ${{ vars.IMAGE_NAMESPACE }}
+          APP_DIR: ${{ vars.APP_DIR }}
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: 22
+          script: |
+            set -euo pipefail
+            cd "$APP_DIR"
+            echo "$GITHUB_TOKEN" | docker login "$REGISTRY" -u "$GITHUB_ACTOR" --password-stdin
+            docker compose -f compose.prod.yml pull
+            docker compose -f compose.prod.yml up -d
+            docker compose -f compose.prod.yml ps
+
+      - name: Show external endpoints (safe)
+        env:
+          APP_DIR: ${{ vars.APP_DIR }}
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: 22
+          script: |
+            set -euo pipefail
+            cd "${{ vars.APP_DIR }}"
+            if [ -f .env ]; then
+              # shellcheck disable=SC2046
+              set -a; . ./.env; set +a
+              echo "External endpoints:"
+              echo "- Jira Fetch Service:   http://${{ secrets.SSH_HOST }}:${JIRA_FETCH_SERVICE_PORT}"
+              echo "- Reporting Service:    http://${{ secrets.SSH_HOST }}:${REPORTING_SERVICE_PORT}"
+              echo "- Chart Service:        http://${{ secrets.SSH_HOST }}:${CHART_SERVICE_PORT}"
+              echo "- Email Service:        http://${{ secrets.SSH_HOST }}:${EMAIL_SERVICE_PORT}"
+              echo "- Excel Service:        http://${{ secrets.SSH_HOST }}:${EXCEL_SERVICE_PORT}"
+              echo "- RabbitMQ Management:  http://${{ secrets.SSH_HOST }}:${RABBITMQ_MANAGEMENT_PORT}"
+            else
+              echo ".env not found at ${{ vars.APP_DIR }}/.env; cannot print ports."
+            fi
+
+      - name: Print verification commands
+        run: |
+          echo "Verify on server:"
+          echo "  docker ps --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}'"
+          echo "  docker compose -f ${{ vars.APP_DIR }}/compose.prod.yml ps"
+          echo "From your machine: curl http://${{ secrets.SSH_HOST }}:8082/actuator/health (adjust port)"

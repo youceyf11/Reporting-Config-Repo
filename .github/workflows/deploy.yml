@@ -50,7 +50,7 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           port: 22
           source: "deploy/compose.prod.yml"
-          target: "${{ vars.APP_DIR }}"
+          target: "/opt/reporting-app"
 
       - name: Create .env on server if missing (placeholder)
         uses: appleboy/ssh-action@v1.0.3

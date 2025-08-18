@@ -85,7 +85,7 @@ jobs:
             sudo chown -R "$USER:$USER" "${{ vars.APP_DIR }}"
             if [ "${FORCE_ENV_OVERWRITE:-false}" = "true" ] || [ ! -f "${{ vars.APP_DIR }}/.env" ]; then
               printf '%s\n' \
-                "IMAGE_NAMESPACE=${IMAGE_NAMESPACE}" \
+                "IMAGE_NAMESPACE=youceyf11" \
                 "JIRA_BASE_URL=${JIRA_BASE_URL}" \
                 "JIRA_USERNAME=${JIRA_USERNAME}" \
                 "JIRA_API_TOKEN=${JIRA_API_TOKEN}" \

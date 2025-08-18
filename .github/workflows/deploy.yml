@@ -126,7 +126,6 @@ jobs:
         env:
           REGISTRY: ${{ vars.REGISTRY }}
           IMAGE_NAMESPACE: ${{ vars.IMAGE_NAMESPACE }}
-          APP_DIR: ${{ vars.APP_DIR }}
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -136,7 +135,7 @@ jobs:
           port: 22
           script: |
             set -euo pipefail
-            cd "$APP_DIR"
+            cd "/opt/reporting-app"
             echo "$GITHUB_TOKEN" | docker login "$REGISTRY" -u "$GITHUB_ACTOR" --password-stdin
             IMAGE_NAMESPACE=youceyf11 docker compose -f compose.prod.yml pull
             IMAGE_NAMESPACE=youceyf11 docker compose -f compose.prod.yml up -d

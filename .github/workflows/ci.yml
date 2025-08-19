@@ -37,7 +37,8 @@ jobs:
           - 9092:9092
         env:
           KAFKA_CFG_ZOOKEEPER_CONNECT: zookeeper:2181
-          KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+          # Advertise localhost so the Maven tests (running on the host) do not get redirected to 'kafka:9092'
+          KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
           ALLOW_PLAINTEXT_LISTENER: "yes"
         options: >-
           --health-cmd="kafka-topics.sh --bootstrap-server localhost:9092 --list || exit 1"

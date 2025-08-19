@@ -48,7 +48,8 @@ public interface JiraMapper {
             return null;
         }
         try {
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSXX");
+            // single 'X' zone-offset token is supported on Java 8+; double 'XX' fails on older JDKs used in CI
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSX");
             return OffsetDateTime.parse(dateString, formatter).toLocalDateTime();
         } catch (DateTimeParseException e) {
             System.err.println("Error parsing date: " + dateString + " - " + e.getMessage());

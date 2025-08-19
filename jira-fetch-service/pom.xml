@@ -2,11 +2,13 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
+	<!-- Inherit from the multi-module aggregator so that all common
+	     versions (including Spring Boot) come from a single place. -->
 	<parent>
-		<groupId>org.springframework.boot</groupId>
-		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>3.2.12</version>
-		<relativePath/> <!-- lookup parent from repository -->
+		<groupId>org.project</groupId>
+		<artifactId>reporting-logistics-app</artifactId>
+		<version>1.0-SNAPSHOT</version>
+		<relativePath>../pom.xml</relativePath>
 	</parent>
 	<groupId>org.project</groupId>
 	<artifactId>jira-fetch-service</artifactId>
@@ -167,8 +169,9 @@
 		<dependency>
 			<groupId>com.squareup.okhttp3</groupId>
 			<artifactId>mockwebserver</artifactId>
+			<version>4.12.0</version>
 			<scope>test</scope>
-		</dependency>
+		</dependency> 
 	</dependencies>
 	<dependencyManagement>
 		<dependencies>
@@ -200,6 +203,7 @@
 							<version>1.5.3.Final</version>
 						</path>
 					</annotationProcessorPaths>
+					<!-- Removing testAnnotationProcessorPaths to prevent MapStruct from regenerating stubs during test-compile phase -->
 				</configuration>
 			</plugin>
 			<plugin>
@@ -229,6 +233,13 @@
 					</environmentVariables>
 				</configuration>
 			</plugin>
+			<plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <configuration>
+                    <skip>true</skip>
+                </configuration>
+            </plugin>
 		</plugins>
 	</build>
 

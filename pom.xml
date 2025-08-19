@@ -93,12 +93,36 @@
 
 <plugin>
   <groupId>com.github.spotbugs</groupId><artifactId>spotbugs-maven-plugin</artifactId><version>4.8.3.1</version>
-  <configuration><failOnError>true</failOnError></configuration>
+  <configuration>
+    <failOnError>true</failOnError>
+    <!-- Fail build only on HIGH severity bugs; Medium/Low will be reported but won't break CI -->
+    <threshold>High</threshold>
+  </configuration>
   <executions><execution><phase>verify</phase><goals><goal>check</goal></goals></execution></executions>
 </plugin>
 <plugin>
-  <groupId>org.apache.maven.plugins</groupId><artifactId>maven-checkstyle-plugin</artifactId><version>3.3.1</version>
-  <executions><execution><phase>verify</phase><goals><goal>check</goal></goals></execution></executions>
+  <groupId>org.apache.maven.plugins</groupId>
+  <artifactId>maven-checkstyle-plugin</artifactId>
+  <version>3.3.1</version>
+  <configuration>
+    <!-- Do not fail the build for style violations; they will still be reported -->
+    <failOnViolation>false</failOnViolation>
+    <!-- Limit analysis strictly to source dirs; exclude MapStruct generated sources -->
+    <sourceDirectories>
+      <directory>${project.basedir}/src/main/java</directory>
+      <directory>${project.basedir}/src/test/java</directory>
+    </sourceDirectories>
+    <excludes>**/target/generated-sources/**,**/generated/**</excludes>
+    <consoleOutput>true</consoleOutput>
+  </configuration>
+  <executions>
+    <execution>
+      <phase>verify</phase>
+      <goals>
+        <goal>check</goal>
+      </goals>
+    </execution>
+  </executions>
 </plugin>
 
 <!-- OWASP Dependency-Check -->

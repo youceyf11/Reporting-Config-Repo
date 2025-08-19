@@ -4,8 +4,8 @@ import org.springframework.beans.factory.InitializingBean;
 import org.springframework.stereotype.Component;
 
 import java.io.BufferedReader;
-import java.io.FileReader;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -24,7 +24,7 @@ public class EnvLoader implements InitializingBean {
         }
 
         if (Files.exists(envPath)) {
-            try (BufferedReader reader = new BufferedReader(new FileReader(envPath.toFile()))) {
+            try (BufferedReader reader = Files.newBufferedReader(envPath, StandardCharsets.UTF_8)) {
                 String line;
                 while ((line = reader.readLine()) != null) {
                     line = line.trim();

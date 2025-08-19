@@ -1,21 +1,24 @@
 package org.project.jirafetchservice.mapper;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mapstruct.factory.Mappers;
-import org.mockito.junit.jupiter.MockitoExtension;
 import org.project.jirafetchservice.dto.IssueSimpleDto;
 import org.project.jirafetchservice.dto.JiraIssueDto;
 import org.project.jirafetchservice.jiraApi.JiraIssueApiResponse;
+import org.mapstruct.factory.Mappers;
 
 import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@ExtendWith(MockitoExtension.class)
 class JiraMapperTest {
 
-    private final JiraMapper jiraMapper = Mappers.getMapper(JiraMapper.class);
+    private JiraMapper jiraMapper;
+
+    @BeforeEach
+    void setUp() {
+        jiraMapper = Mappers.getMapper(JiraMapper.class);
+    }
 
     @Test
     void toSimpleDtoFromApi_shouldMapAllFields_whenValidApiResponse() {

@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import java.util.Base64;
+import java.nio.charset.StandardCharsets;
 
 @Configuration
 public class WebClientConfig {
@@ -23,7 +24,7 @@ public class WebClientConfig {
     @Bean("jiraApiWebClient")
     public WebClient jiraApiWebClient() {
         String credentials = Base64.getEncoder()
-                .encodeToString((jiraUsername + ":" + jiraApiToken).getBytes());
+                .encodeToString((jiraUsername + ":" + jiraApiToken).getBytes(StandardCharsets.UTF_8));
 
         return WebClient.builder()
                 .baseUrl(jiraBaseUrl)

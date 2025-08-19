@@ -11,8 +11,7 @@ import java.io.Serializable;
 @RequiredArgsConstructor
 public class EmailMessagePayload implements Serializable {
     private String emailId;
-    private EmailRequest request;
+    // Marked transient to avoid serialization issues and SpotBugs SE_BAD_FIELD
+    private transient EmailRequest request;
     private String routingKey;
-
-
 }

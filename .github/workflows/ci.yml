@@ -6,6 +6,12 @@ on:
     tags: ["*"]
   pull_request:
     branches: ["**"]
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: "Reason for manual run"
+        required: false
+        default: "manual-trigger"
 
 env:
   REGISTRY: ghcr.io

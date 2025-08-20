@@ -25,6 +25,18 @@ jobs:
   build-test:
     name: Build and Test
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        module:
+          - chart-service
+          - discovery-service
+          - email-service
+          - excel-service
+          - gateway-service
+          - issue-events
+          - jira-fetch-service
+          - reporting-service
 
     services:
       zookeeper:
@@ -141,18 +153,23 @@ jobs:
             find . -name "*MapperImpl.java" -type f
           fi
 
-      - name: Build + tests
-        run: mvn -B -Dspring.profiles.active=ci -Ddependency-check.skip=true verify
+      - name: Build + tests (${{ matrix.module }})
+        run: |
+          mvn -B -T 1C -fae \
+            -Dspring.profiles.active=ci \
+            -Ddependency-check.skip=true \
+            -pl ${{ matrix.module }} -am \
+            verify
 
-      - name: Upload test reports
+      - name: Upload test reports (${{ matrix.module }})
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: junit-and-jacoco
+          name: junit-and-jacoco-${{ matrix.module }}
           path: |
-            **/target/surefire-reports/*.xml
-            **/target/failsafe-reports/*.xml
-            **/target/site/jacoco/*.xml
+            **/${{ matrix.module }}/target/surefire-reports/*.xml
+            **/${{ matrix.module }}/target/failsafe-reports/*.xml
+            **/${{ matrix.module }}/target/site/jacoco/*.xml
 
   docker-images:
     name: Build and Push Docker Images

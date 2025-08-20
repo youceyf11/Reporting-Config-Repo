@@ -110,6 +110,37 @@ jobs:
             sleep 2
           done
 
+      # NOUVELLE ÉTAPE : Génération des classes MapStruct
+      - name: Generate MapStruct implementations
+        run: |
+          echo "🔧 Cleaning previous builds..."
+          mvn clean -q
+          
+          echo "📦 Compiling and generating MapStruct mappers..."
+          mvn compile -q -DskipTests
+          
+          echo "✅ Verifying generated mappers..."
+          find . -name "*MapperImpl.java" -type f | head -10 || echo "No MapperImpl found yet"
+          
+          echo "🧹 Cleaning test classes to avoid conflicts..."
+          find . -path "*/target/test-classes" -type d -exec rm -rf {} + 2>/dev/null || true
+
+      # NOUVELLE ÉTAPE : Validation des mappers générés
+      - name: Validate MapStruct generation
+        run: |
+          echo "🔍 Checking for generated mappers..."
+          MAPPERS_FOUND=$(find . -name "*MapperImpl.java" -type f | wc -l)
+          echo "Found $MAPPERS_FOUND MapStruct implementation(s)"
+          
+          if [ "$MAPPERS_FOUND" -eq 0 ]; then
+            echo "⚠️ No MapStruct implementations found. Listing target directories..."
+            find . -name "target" -type d -exec find {} -name "generated-sources" \; 2>/dev/null || true
+            echo "This might be normal if no @Mapper interfaces exist."
+          else
+            echo "✅ MapStruct implementations found:"
+            find . -name "*MapperImpl.java" -type f
+          fi
+
       - name: Build + tests
         run: mvn -B -Dspring.profiles.active=ci -Ddependency-check.skip=true verify
 

@@ -105,6 +105,7 @@
   <artifactId>maven-checkstyle-plugin</artifactId>
   <version>3.3.1</version>
   <configuration>
+        <root level="DEBUG"/>
     <!-- Do not fail the build for style violations; they will still be reported -->
     <failOnViolation>false</failOnViolation>
     <!-- Limit analysis strictly to source dirs; exclude MapStruct generated sources -->

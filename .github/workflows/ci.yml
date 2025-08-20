@@ -159,7 +159,7 @@ jobs:
             -Dspring.profiles.active=ci \
             -Ddependency-check.skip=true \
             -pl ${{ matrix.module }} -am \
-            verify
+            clean verify
 
       - name: Upload test reports (${{ matrix.module }})
         if: always()

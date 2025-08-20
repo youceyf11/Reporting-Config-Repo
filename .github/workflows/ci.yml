@@ -122,44 +122,39 @@ jobs:
             sleep 2
           done
 
-      # NOUVELLE ÉTAPE : Génération des classes MapStruct
+      # Génération MapStruct SEULEMENT pour jira-fetch-service
       - name: Generate MapStruct implementations
+        if: matrix.module == 'jira-fetch-service'
         run: |
-          echo "🔧 Cleaning previous builds..."
+          echo "🔧 Cleaning previous builds for MapStruct generation..."
           mvn clean -q
           
-          echo "📦 Compiling and generating MapStruct mappers..."
-          mvn compile -q -DskipTests
+          echo "📦 Compiling and generating MapStruct mappers for jira-fetch-service..."
+          mvn compile -q -DskipTests -pl jira-fetch-service -am
           
           echo "✅ Verifying generated mappers..."
           find . -name "*MapperImpl.java" -type f | head -10 || echo "No MapperImpl found yet"
-          
-          echo "🧹 Cleaning test classes to avoid conflicts..."
-          find . -path "*/target/test-classes" -type d -exec rm -rf {} + 2>/dev/null || true
 
-      # NOUVELLE ÉTAPE : Validation des mappers générés
-      - name: Validate MapStruct generation
-        run: |
-          echo "🔍 Checking for generated mappers..."
-          MAPPERS_FOUND=$(find . -name "*MapperImpl.java" -type f | wc -l)
-          echo "Found $MAPPERS_FOUND MapStruct implementation(s)"
-          
-          if [ "$MAPPERS_FOUND" -eq 0 ]; then
-            echo "⚠️ No MapStruct implementations found. Listing target directories..."
-            find . -name "target" -type d -exec find {} -name "generated-sources" \; 2>/dev/null || true
-            echo "This might be normal if no @Mapper interfaces exist."
-          else
-            echo "✅ MapStruct implementations found:"
-            find . -name "*MapperImpl.java" -type f
-          fi
+      # JUnit platform settings are committed in repo; no ad-hoc CI step required
 
       - name: Build + tests (${{ matrix.module }})
         run: |
-          mvn -B -T 1C -fae \
-            -Dspring.profiles.active=ci \
-            -Ddependency-check.skip=true \
-            -pl ${{ matrix.module }} -am \
-            clean verify
+          # Configuration spéciale pour reporting-service avec timeout étendu et stabilisation
+          if [ "${{ matrix.module }}" = "reporting-service" ]; then
+            echo "🔧 Running reporting-service with stable settings (pom.xml + junit-platform.properties)..."
+            mvn -B -T 1 \
+              -Dspring.profiles.active=ci \
+              -Ddependency-check.skip=true \
+              -pl ${{ matrix.module }} -am \
+              clean verify
+          else
+            echo "🔧 Running standard build for ${{ matrix.module }}..."
+            mvn -B -T 1C -fae \
+              -Dspring.profiles.active=ci \
+              -Ddependency-check.skip=true \
+              -pl ${{ matrix.module }} -am \
+              clean verify
+          fi
 
       - name: Upload test reports (${{ matrix.module }})
         if: always()
@@ -170,6 +165,20 @@ jobs:
             **/${{ matrix.module }}/target/surefire-reports/*.xml
             **/${{ matrix.module }}/target/failsafe-reports/*.xml
             **/${{ matrix.module }}/target/site/jacoco/*.xml
+
+      # Debug step pour reporting-service en cas d'échec
+      - name: Debug reporting-service failure
+        if: failure() && matrix.module == 'reporting-service'
+        run: |
+          echo "🔍 Debugging reporting-service test failure..."
+          echo "=== Surefire Reports ==="
+          find reporting-service/target/surefire-reports -name "*.txt" -exec echo "File: {}" \; -exec cat {} \; 2>/dev/null || echo "No surefire txt reports found"
+          
+          echo "=== Thread dumps (if any) ==="
+          find . -name "*.dump*" -exec echo "File: {}" \; -exec head -50 {} \; 2>/dev/null || echo "No dump files found"
+          
+          echo "=== Process info ==="
+          ps aux | grep -E "(java|maven|surefire)" || echo "No relevant processes found"
 
   docker-images:
     name: Build and Push Docker Images

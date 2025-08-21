@@ -122,6 +122,16 @@ jobs:
               echo ".env already exists; leaving as-is"
             fi
 
+      - name: Deploy application JAR to EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: 63.177.70.31
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: "22"
+          source: "target/*.jar"
+          target: "/home/ubuntu/app/"
+
       - name: Login to GHCR on the server and deploy
         uses: appleboy/ssh-action@v1.0.3
         env:

@@ -76,7 +76,7 @@
   <dependency>
   <groupId>org.project</groupId>
   <artifactId>issue-events</artifactId>
-  <version>${project.version}</version>
+<version>${project.parent.version}</version>
 </dependency>
 
 		<dependency>

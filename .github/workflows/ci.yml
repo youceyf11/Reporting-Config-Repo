@@ -23,20 +23,8 @@ permissions:
 
 jobs:
   build-test:
-    name: Build and Test
+    name: Build and Test All Modules
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        module:
-          - chart-service
-          - discovery-service
-          - email-service
-          - excel-service
-          - gateway-service
-          - issue-events
-          - jira-fetch-service
-          - reporting-service
 
     services:
       zookeeper:
@@ -95,8 +83,7 @@ jobs:
           - 5432:5432
         options: >-
           --health-cmd="pg_isready -U jira -d jira_db"
-          --health-interval=10s --health-timeout=5s
-          --health-retries=20
+          --health-interval=10s --health-timeout=5s --health-retries=20
 
     steps:
       - name: Checkout repository
@@ -122,36 +109,23 @@ jobs:
             sleep 2
           done
 
-      - name: Clean & generate MapStruct for jira-fetch-service
-        if: matrix.module == 'jira-fetch-service'
+      - name: Build entire project (Maven Reactor)
         run: |
-          echo "🧹 Cleaning previous target and generated sources..."
-          mvn clean -pl jira-fetch-service -q
-
-          echo "📦 Generating MapStruct implementations..."
-          mvn compile -pl jira-fetch-service -am -DskipTests -q
-
-          echo "✅ MapperImpl generated files:"
-          find jira-fetch-service/target/generated-sources/ -name "*MapperImpl.java" | head -10
-
-      - name: Build + tests (${{ matrix.module }})
-        run: |
-          echo "🔧 Running build and tests for ${{ matrix.module }}..."
+          echo "📦 Building all modules (including issue-events → jira-fetch-service dependency)..."
           mvn -B -T 1C -fae \
             -Dspring.profiles.active=ci \
             -Ddependency-check.skip=true \
-            -pl ${{ matrix.module }} -am \
             clean verify
 
-      - name: Upload test reports (${{ matrix.module }})
+      - name: Upload test reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: junit-and-jacoco-${{ matrix.module }}
+          name: junit-and-jacoco-reports
           path: |
-            **/${{ matrix.module }}/target/surefire-reports/*.xml
-            **/${{ matrix.module }}/target/failsafe-reports/*.xml
-            **/${{ matrix.module }}/target/site/jacoco/*.xml
+            */target/surefire-reports/*.xml
+            */target/failsafe-reports/*.xml
+            */target/site/jacoco/*.xml
 
   docker-images:
     name: Build and Push Docker Images
@@ -193,7 +167,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Cache Trivy DB (docker-images job)
+      - name: Cache Trivy DB
         uses: actions/cache@v4
         with:
           path: ~/.cache/trivy
@@ -210,20 +184,17 @@ jobs:
           for svc in jira-fetch-service reporting-service chart-service email-service excel-service gateway-service discovery-service; do
             echo "=== Processing $svc ==="
 
-            # Use custom Dockerfile for jira-fetch-service
             DF="./$svc/Dockerfile"
             if [ "$svc" = "jira-fetch-service" ]; then
               DF="./jira-fetch-service/dockerfile"
             fi
 
-            # Build image
             echo "🏗️  Building image for $svc..."
             docker build --no-cache -f "$DF" \
               -t ${{ env.REGISTRY }}/$OWNER_LC/$svc:$TAG \
               -t ${{ env.REGISTRY }}/$OWNER_LC/$svc:$GITHUB_SHA \
               ./$svc
 
-            # Security scan (fail on HIGH/CRITICAL)
             echo "🔍 Scanning ${{ env.REGISTRY }}/$OWNER_LC/$svc:$TAG"
             docker run --rm \
               -v /var/run/docker.sock:/var/run/docker.sock \
@@ -243,8 +214,6 @@ jobs:
             echo "🚚 Pushing $svc images..."
             docker push ${{ env.REGISTRY }}/$OWNER_LC/$svc:$TAG
             docker push ${{ env.REGISTRY }}/$OWNER_LC/$svc:$GITHUB_SHA
-            # ⚠️ Avoid pushing :latest in CI to prevent overwrites
-            # Only tag :latest manually or on release
           done
 
   trivy-scan:
@@ -269,9 +238,9 @@ jobs:
 
       - name: Compute lowercase owner
         run: |
-          echo "OWNER_LC=${{ github.repository_owner }}",, >> $GITHUB_ENV
+          echo "OWNER_LC=${{ github.repository_owner }},," >> $GITHUB_ENV
 
-      - name: Cache Trivy DB (trivy-scan job)
+      - name: Cache Trivy DB
         uses: actions/cache@v4
         with:
           path: ~/.cache/trivy

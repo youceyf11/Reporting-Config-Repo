@@ -8,10 +8,8 @@ import org.springframework.web.reactive.function.client.WebClient;
 @Configuration
 public class ReportingClientConfig {
 
-    @Bean
-    public WebClient reportingWebClient(@Value("${reporting.base-url}") String baseUrl) {
-        return WebClient.builder()
-                .baseUrl(baseUrl)
-                .build();
-    }
+  @Bean
+  public WebClient reportingWebClient(@Value("${reporting.base-url}") String baseUrl) {
+    return WebClient.builder().baseUrl(baseUrl).build();
+  }
 }

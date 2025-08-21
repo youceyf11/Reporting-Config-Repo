@@ -17,24 +17,25 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 @Profile("!test")
 public class RedisConfig {
 
-    @Bean
-    public ReactiveRedisTemplate<String, EmailLog> reactiveRedisTemplate(
-            ReactiveRedisConnectionFactory connectionFactory) {
+  @Bean
+  public ReactiveRedisTemplate<String, EmailLog> reactiveRedisTemplate(
+      ReactiveRedisConnectionFactory connectionFactory) {
 
-        // Create an ObjectMapper and register the JavaTimeModule
-        ObjectMapper objectMapper = new ObjectMapper();
-        objectMapper.registerModule(new JavaTimeModule());
-        // Disable writing dates as timestamps
-        objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+    // Create an ObjectMapper and register the JavaTimeModule
+    ObjectMapper objectMapper = new ObjectMapper();
+    objectMapper.registerModule(new JavaTimeModule());
+    // Disable writing dates as timestamps
+    objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
 
-        // Create a serializer for EmailLog objects
-        Jackson2JsonRedisSerializer<EmailLog> serializer = new Jackson2JsonRedisSerializer<>(objectMapper, EmailLog.class);
+    // Create a serializer for EmailLog objects
+    Jackson2JsonRedisSerializer<EmailLog> serializer =
+        new Jackson2JsonRedisSerializer<>(objectMapper, EmailLog.class);
 
-        RedisSerializationContext.RedisSerializationContextBuilder<String, EmailLog> builder =
-                RedisSerializationContext.newSerializationContext(new StringRedisSerializer());
+    RedisSerializationContext.RedisSerializationContextBuilder<String, EmailLog> builder =
+        RedisSerializationContext.newSerializationContext(new StringRedisSerializer());
 
-        RedisSerializationContext<String, EmailLog> context = builder.value(serializer).build();
+    RedisSerializationContext<String, EmailLog> context = builder.value(serializer).build();
 
-        return new ReactiveRedisTemplate<>(connectionFactory, context);
-    }
+    return new ReactiveRedisTemplate<>(connectionFactory, context);
+  }
 }

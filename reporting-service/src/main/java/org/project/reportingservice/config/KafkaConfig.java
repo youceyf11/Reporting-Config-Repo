@@ -1,5 +1,7 @@
 package org.project.reportingservice.config;
 
+import java.util.HashMap;
+import java.util.Map;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -11,9 +13,6 @@ import org.springframework.context.annotation.Configuration;
 import reactor.kafka.receiver.ReceiverOptions;
 import reactor.kafka.sender.KafkaSender;
 import reactor.kafka.sender.SenderOptions;
-
-import java.util.HashMap;
-import java.util.Map;
 
 @Configuration
 public class KafkaConfig {

@@ -1,5 +1,7 @@
 package org.project.emailservice.controller;
 
+import static org.springframework.web.reactive.function.BodyInserters.fromMultipartData;
+
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.project.emailservice.dto.EmailRequest;
@@ -17,41 +19,39 @@ import org.springframework.test.web.reactive.server.WebTestClient;
 import org.springframework.util.MultiValueMap;
 import reactor.core.publisher.Mono;
 
-import static org.springframework.web.reactive.function.BodyInserters.fromMultipartData;
-
 @WebFluxTest(controllers = EmailController.class)
 @ActiveProfiles("test")
 class EmailControllerChartTest {
 
-    @Autowired WebTestClient client;
-    @MockBean EmailService emailService;
+  @Autowired WebTestClient client;
+  @MockBean EmailService emailService;
 
-    @Test
-    void sendChartEmail_multipart_returns_202() {
-        EmailRequest meta = EmailRequest.builder()
-                .to("u@test.com").from("me@test.com").subject("chart").build();
+  @Test
+  void sendChartEmail_multipart_returns_202() {
+    EmailRequest meta =
+        EmailRequest.builder().to("u@test.com").from("me@test.com").subject("chart").build();
 
-        EmailResponse res = EmailResponse.builder()
-                .emailId("999").status(EmailStatus.QUEUED).build();
+    EmailResponse res = EmailResponse.builder().emailId("999").status(EmailStatus.QUEUED).build();
 
-        Mockito.when(emailService.processEmailRequest(Mockito.any()))
-               .thenReturn(Mono.just(res));
+    Mockito.when(emailService.processEmailRequest(Mockito.any())).thenReturn(Mono.just(res));
 
-        MultipartBodyBuilder builder = new MultipartBodyBuilder();
-        String metaJson = "{\"to\":\"u@test.com\",\"from\":\"me@test.com\",\"subject\":\"chart\"}";
-        builder.part("request", metaJson)
-               .contentType(MediaType.APPLICATION_JSON);
-        builder.part("file", new ByteArrayResource("img".getBytes()))
-               .filename("chart.png");
+    MultipartBodyBuilder builder = new MultipartBodyBuilder();
+    String metaJson = "{\"to\":\"u@test.com\",\"from\":\"me@test.com\",\"subject\":\"chart\"}";
+    builder.part("request", metaJson).contentType(MediaType.APPLICATION_JSON);
+    builder.part("file", new ByteArrayResource("img".getBytes())).filename("chart.png");
 
-        MultiValueMap<String, org.springframework.http.HttpEntity<?>> multipartData = builder.build();
+    MultiValueMap<String, org.springframework.http.HttpEntity<?>> multipartData = builder.build();
 
-        client.post().uri("/api/emails/send/chart")
-              .contentType(MediaType.MULTIPART_FORM_DATA)
-              .body(fromMultipartData(multipartData))
-              .exchange()
-              .expectStatus().isAccepted()
-              .expectBody()
-              .jsonPath("$.emailId").isEqualTo("999");
-    }
+    client
+        .post()
+        .uri("/api/emails/send/chart")
+        .contentType(MediaType.MULTIPART_FORM_DATA)
+        .body(fromMultipartData(multipartData))
+        .exchange()
+        .expectStatus()
+        .isAccepted()
+        .expectBody()
+        .jsonPath("$.emailId")
+        .isEqualTo("999");
+  }
 }

@@ -18,40 +18,48 @@ import reactor.core.publisher.Mono;
 @ActiveProfiles("test")
 class EmailControllerTest {
 
-    @Autowired WebTestClient client;
-    @MockBean EmailService emailService;
+  @Autowired WebTestClient client;
+  @MockBean EmailService emailService;
 
-    @Test
-    void sendEmail_returns_202_and_body() {
-        EmailRequest req = EmailRequest.builder()
-                .to("u@test.com").from("me@test.com").subject("hi").build();
+  @Test
+  void sendEmail_returns_202_and_body() {
+    EmailRequest req =
+        EmailRequest.builder().to("u@test.com").from("me@test.com").subject("hi").build();
 
-        EmailResponse res = EmailResponse.builder()
-                .emailId("123").status(EmailStatus.QUEUED).build();
+    EmailResponse res = EmailResponse.builder().emailId("123").status(EmailStatus.QUEUED).build();
 
-        Mockito.when(emailService.processEmailRequest(Mockito.any()))
-               .thenReturn(Mono.just(res));
+    Mockito.when(emailService.processEmailRequest(Mockito.any())).thenReturn(Mono.just(res));
 
-        client.post().uri("/api/emails/send")
-              .contentType(MediaType.APPLICATION_JSON)
-              .bodyValue(req)
-              .exchange()
-              .expectStatus().isAccepted()
-              .expectBody()
-              .jsonPath("$.emailId").isEqualTo("123")
-              .jsonPath("$.status").isEqualTo("QUEUED");
-    }
+    client
+        .post()
+        .uri("/api/emails/send")
+        .contentType(MediaType.APPLICATION_JSON)
+        .bodyValue(req)
+        .exchange()
+        .expectStatus()
+        .isAccepted()
+        .expectBody()
+        .jsonPath("$.emailId")
+        .isEqualTo("123")
+        .jsonPath("$.status")
+        .isEqualTo("QUEUED");
+  }
 
-    @Test
-    void getEmailStatus_404_when_not_found() {
-        Mockito.when(emailService.getEmailStatus("notFound"))
-               .thenReturn(Mono.just(
-                       new EmailResponse("notFound", EmailStatus.NOT_FOUND, null, null, null, null)));
+  @Test
+  void getEmailStatus_404_when_not_found() {
+    Mockito.when(emailService.getEmailStatus("notFound"))
+        .thenReturn(
+            Mono.just(
+                new EmailResponse("notFound", EmailStatus.NOT_FOUND, null, null, null, null)));
 
-        client.get().uri("/api/emails/status/notFound")
-              .exchange()
-              .expectStatus().isOk()
-              .expectBody()
-              .jsonPath("$.status").isEqualTo("NOT_FOUND");
-    }
+    client
+        .get()
+        .uri("/api/emails/status/notFound")
+        .exchange()
+        .expectStatus()
+        .isOk()
+        .expectBody()
+        .jsonPath("$.status")
+        .isEqualTo("NOT_FOUND");
+  }
 }

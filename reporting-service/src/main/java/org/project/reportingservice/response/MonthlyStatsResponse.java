@@ -1,47 +1,41 @@
 package org.project.reportingservice.response;
 
+/** Classe Integererne pour la réponse des statistiques mensuelles */
+public class MonthlyStatsResponse {
+  private Double totalHoursWorked;
+  private Integer totalEmployees;
+  private Double averageHoursPerEmployee;
 
+  public MonthlyStatsResponse() {}
 
-/**
-     * Classe Integererne pour la réponse des statistiques mensuelles
-     */
+  public MonthlyStatsResponse(
+      Double totalHoursWorked, Integer totalEmployees, Double averageHoursPerEmployee) {
+    this.totalHoursWorked = totalHoursWorked;
+    this.totalEmployees = totalEmployees;
+    this.averageHoursPerEmployee = averageHoursPerEmployee;
+  }
 
+  public Double getTotalHoursWorked() {
+    return totalHoursWorked;
+  }
 
- public class MonthlyStatsResponse {
-        private Double totalHoursWorked;
-        private Integer totalEmployees;
-        private Double averageHoursPerEmployee;
+  public void setTotalHoursWorked(Double totalHoursWorked) {
+    this.totalHoursWorked = totalHoursWorked;
+  }
 
-    public MonthlyStatsResponse() {
-    }
+  public Integer getTotalEmployees() {
+    return totalEmployees;
+  }
 
-    public MonthlyStatsResponse(Double totalHoursWorked, Integer totalEmployees, Double averageHoursPerEmployee) {
-        this.totalHoursWorked = totalHoursWorked;
-        this.totalEmployees = totalEmployees;
-        this.averageHoursPerEmployee = averageHoursPerEmployee;
-    }
+  public void setTotalEmployees(Integer totalEmployees) {
+    this.totalEmployees = totalEmployees;
+  }
 
-    public Double getTotalHoursWorked() {
-        return totalHoursWorked;
-    }
+  public Double getAverageHoursPerEmployee() {
+    return averageHoursPerEmployee;
+  }
 
-    public void setTotalHoursWorked(Double totalHoursWorked) {
-        this.totalHoursWorked = totalHoursWorked;
-    }
-
-    public Integer getTotalEmployees() {
-        return totalEmployees;
-    }
-
-    public void setTotalEmployees(Integer totalEmployees) {
-        this.totalEmployees = totalEmployees;
-    }
-
-    public Double getAverageHoursPerEmployee() {
-        return averageHoursPerEmployee;
-    }
-
-    public void setAverageHoursPerEmployee(Double averageHoursPerEmployee) {
-        this.averageHoursPerEmployee = averageHoursPerEmployee;
-    }
+  public void setAverageHoursPerEmployee(Double averageHoursPerEmployee) {
+    this.averageHoursPerEmployee = averageHoursPerEmployee;
+  }
 }

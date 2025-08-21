@@ -1,5 +1,8 @@
 package org.project.emailservice.enums;
 
 public enum EmailPriority {
-    LOW, NORMAL, HIGH, URGENT
+  LOW,
+  NORMAL,
+  HIGH,
+  URGENT
 }

@@ -5,6 +5,5 @@ import reactor.core.publisher.Mono;
 
 public interface IReportingService {
 
-     Mono<ReportingResultDto> getMonthlyReportingData(String projectKey);
-    
+  Mono<ReportingResultDto> getMonthlyReportingData(String projectKey);
 }

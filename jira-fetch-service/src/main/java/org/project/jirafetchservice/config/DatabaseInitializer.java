@@ -8,15 +8,15 @@ import org.springframework.stereotype.Component;
 @Component
 public class DatabaseInitializer implements CommandLineRunner {
 
-    @Autowired
-    private R2dbcEntityTemplate r2dbcEntityTemplate;
+  @Autowired private R2dbcEntityTemplate r2dbcEntityTemplate;
 
-    @Override
-    public void run(String... args) throws Exception {
-        // Supprime la suppression systématique de la table pour conserver les données de test
-        // String dropTableSql = "DROP TABLE IF EXISTS jira_issue";
+  @Override
+  public void run(String... args) throws Exception {
+    // Supprime la suppression systématique de la table pour conserver les données de test
+    // String dropTableSql = "DROP TABLE IF EXISTS jira_issue";
 
-        String createTableSql = """
+    String createTableSql =
+        """
             CREATE TABLE IF NOT EXISTS jira_issue (
                 id VARCHAR(255) PRIMARY KEY,
                 issue_key VARCHAR(255) UNIQUE NOT NULL,
@@ -47,29 +47,39 @@ public class DatabaseInitializer implements CommandLineRunner {
             )
             """;
 
-        try {
-            r2dbcEntityTemplate.getDatabaseClient()
-                    // .sql(dropTableSql).then()  // Désactivé : on ne supprime plus la table
-                    .sql(createTableSql)
-                    .then()
-                    .then(r2dbcEntityTemplate.getDatabaseClient()
-                            .sql("CREATE INDEX IF NOT EXISTS idx_jira_issue_project_key ON jira_issue(project_key)")
-                            .then())
-                    .then(r2dbcEntityTemplate.getDatabaseClient()
-                            .sql("CREATE INDEX IF NOT EXISTS idx_jira_issue_status ON jira_issue(status)")
-                            .then())
-                    .then(r2dbcEntityTemplate.getDatabaseClient()
-                            .sql("CREATE INDEX IF NOT EXISTS idx_jira_issue_assignee ON jira_issue(assignee)")
-                            .then())
-                    .then(r2dbcEntityTemplate.getDatabaseClient()
-                            .sql("CREATE OR REPLACE VIEW issue AS SELECT * FROM jira_issue")
-                            .then())
-                    .block();
+    try {
+      r2dbcEntityTemplate
+          .getDatabaseClient()
+          // .sql(dropTableSql).then()  // Désactivé : on ne supprime plus la table
+          .sql(createTableSql)
+          .then()
+          .then(
+              r2dbcEntityTemplate
+                  .getDatabaseClient()
+                  .sql(
+                      "CREATE INDEX IF NOT EXISTS idx_jira_issue_project_key ON jira_issue(project_key)")
+                  .then())
+          .then(
+              r2dbcEntityTemplate
+                  .getDatabaseClient()
+                  .sql("CREATE INDEX IF NOT EXISTS idx_jira_issue_status ON jira_issue(status)")
+                  .then())
+          .then(
+              r2dbcEntityTemplate
+                  .getDatabaseClient()
+                  .sql("CREATE INDEX IF NOT EXISTS idx_jira_issue_assignee ON jira_issue(assignee)")
+                  .then())
+          .then(
+              r2dbcEntityTemplate
+                  .getDatabaseClient()
+                  .sql("CREATE OR REPLACE VIEW issue AS SELECT * FROM jira_issue")
+                  .then())
+          .block();
 
-            System.out.println("✅ Table jira_issue créée avec succès");
-        } catch (Exception e) {
-            System.err.println("❌ Erreur création table: " + e.getMessage());
-            e.printStackTrace();
-        }
+      System.out.println("✅ Table jira_issue créée avec succès");
+    } catch (Exception e) {
+      System.err.println("❌ Erreur création table: " + e.getMessage());
+      e.printStackTrace();
     }
+  }
 }

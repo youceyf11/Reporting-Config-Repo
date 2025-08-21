@@ -44,7 +44,7 @@ jobs:
         env:
           ALLOW_ANONYMOUS_LOGIN: "yes"
         ports:
-          - 2181:2181    
+          - 2181:2181
         options: >-
           --health-cmd="nc -z 127.0.0.1 2181"
           --health-interval=10s --health-timeout=5s --health-retries=12
@@ -55,7 +55,6 @@ jobs:
           - 9092:9092
         env:
           KAFKA_CFG_ZOOKEEPER_CONNECT: zookeeper:2181
-          # Advertise localhost so the Maven tests (running on the host) do not get redirected to 'kafka:9092'
           KAFKA_CFG_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
           ALLOW_PLAINTEXT_LISTENER: "yes"
         options: >-
@@ -96,7 +95,8 @@ jobs:
           - 5432:5432
         options: >-
           --health-cmd="pg_isready -U jira -d jira_db"
-          --health-interval=10s --health-timeout=5s --health-retries=20
+          --health-interval=10s --health-timeout=5s
+          --health-retries=20
 
     steps:
       - name: Checkout repository
@@ -118,43 +118,30 @@ jobs:
             && nc -z localhost 5672 \
             && nc -z localhost 5432 \
             && break
-            echo "waiting for zookeeper/kafka/redis/rabbitmq/postgres... ($i)"
+            echo "waiting for services... ($i)"
             sleep 2
           done
 
-      # Génération MapStruct SEULEMENT pour jira-fetch-service
-      - name: Generate MapStruct implementations
+      - name: Clean & generate MapStruct for jira-fetch-service
         if: matrix.module == 'jira-fetch-service'
         run: |
-          echo "🔧 Cleaning previous builds for MapStruct generation..."
-          mvn clean -q
-          
-          echo "📦 Compiling and generating MapStruct mappers for jira-fetch-service..."
-          mvn compile -q -DskipTests -pl jira-fetch-service -am
-          
-          echo "✅ Verifying generated mappers..."
-          find . -name "*MapperImpl.java" -type f | head -10 || echo "No MapperImpl found yet"
+          echo "🧹 Cleaning previous target and generated sources..."
+          mvn clean -pl jira-fetch-service -q
 
-      # JUnit platform settings are committed in repo; no ad-hoc CI step required
+          echo "📦 Generating MapStruct implementations..."
+          mvn compile -pl jira-fetch-service -am -DskipTests -q
+
+          echo "✅ MapperImpl generated files:"
+          find jira-fetch-service/target/generated-sources/ -name "*MapperImpl.java" | head -10
 
       - name: Build + tests (${{ matrix.module }})
         run: |
-          # Configuration spéciale pour reporting-service avec timeout étendu et stabilisation
-          if [ "${{ matrix.module }}" = "reporting-service" ]; then
-            echo "🔧 Running reporting-service with stable settings (pom.xml + junit-platform.properties)..."
-            mvn -B -T 1 \
-              -Dspring.profiles.active=ci \
-              -Ddependency-check.skip=true \
-              -pl ${{ matrix.module }} -am \
-              clean verify
-          else
-            echo "🔧 Running standard build for ${{ matrix.module }}..."
-            mvn -B -T 1C -fae \
-              -Dspring.profiles.active=ci \
-              -Ddependency-check.skip=true \
-              -pl ${{ matrix.module }} -am \
-              clean verify
-          fi
+          echo "🔧 Running build and tests for ${{ matrix.module }}..."
+          mvn -B -T 1C -fae \
+            -Dspring.profiles.active=ci \
+            -Ddependency-check.skip=true \
+            -pl ${{ matrix.module }} -am \
+            clean verify
 
       - name: Upload test reports (${{ matrix.module }})
         if: always()
@@ -165,20 +152,6 @@ jobs:
             **/${{ matrix.module }}/target/surefire-reports/*.xml
             **/${{ matrix.module }}/target/failsafe-reports/*.xml
             **/${{ matrix.module }}/target/site/jacoco/*.xml
-
-      # Debug step pour reporting-service en cas d'échec
-      - name: Debug reporting-service failure
-        if: failure() && matrix.module == 'reporting-service'
-        run: |
-          echo "🔍 Debugging reporting-service test failure..."
-          echo "=== Surefire Reports ==="
-          find reporting-service/target/surefire-reports -name "*.txt" -exec echo "File: {}" \; -exec cat {} \; 2>/dev/null || echo "No surefire txt reports found"
-          
-          echo "=== Thread dumps (if any) ==="
-          find . -name "*.dump*" -exec echo "File: {}" \; -exec head -50 {} \; 2>/dev/null || echo "No dump files found"
-          
-          echo "=== Process info ==="
-          ps aux | grep -E "(java|maven|surefire)" || echo "No relevant processes found"
 
   docker-images:
     name: Build and Push Docker Images
@@ -232,10 +205,9 @@ jobs:
         run: |
           TAG=${GITHUB_SHA::7}
           OWNER=${{ github.repository_owner }}
-          OWNER=${OWNER,,}  # Convert to lowercase
+          OWNER=${OWNER,,}
           for svc in jira-fetch-service reporting-service chart-service email-service excel-service gateway-service discovery-service; do
             echo "Building $svc..."
-            # Respect non-standard Dockerfile name for jira-fetch-service
             if [ "$svc" = "jira-fetch-service" ]; then
               DF="./jira-fetch-service/dockerfile"
             else
@@ -274,7 +246,6 @@ jobs:
             docker push ${{ env.REGISTRY }}/${OWNER}/${svc}:${TAG}
             docker push ${{ env.REGISTRY }}/${OWNER}/${svc}:${GITHUB_SHA}
             docker push ${{ env.REGISTRY }}/${OWNER}/${svc}:latest
-          done
 
   trivy-scan:
     name: Security Scan

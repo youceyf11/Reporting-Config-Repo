@@ -5,16 +5,18 @@ import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.project.jirafetchservice.JiraFetchServiceApplication;
 import org.project.jirafetchservice.entity.JiraIssueDbEntity;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.data.r2dbc.DataR2dbcTest;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.ContextConfiguration;
 import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
 
-/** Integration tests for JiraIssueRepository. */
 @DataR2dbcTest
 @ActiveProfiles("test")
+@ContextConfiguration(classes = JiraFetchServiceApplication.class)
 class JiraIssueRepositoryTest {
 
   @Autowired private JiraIssueRepository jiraIssueRepository;

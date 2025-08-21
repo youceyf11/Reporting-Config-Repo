@@ -10,7 +10,6 @@
 	</parent>
 	<groupId>org.project</groupId>
 	<artifactId>issue-events</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
 	<packaging>jar</packaging>
 	<name>issue-events</name>
 	<description>issue-events</description>

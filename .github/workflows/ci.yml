@@ -488,24 +488,23 @@ jobs:
             echo "⚠️  No test reports found - check build-test job" >> $GITHUB_STEP_SUMMARY
           fi
 
-  deploy:
-    name: 🚀 Deploy
+  # Déclencher Deploy après succès
+  trigger-deploy:
+    name: 🔗 Trigger Deploy
     needs: [docker-images, security-scan]
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-    if: success() && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
+    if: success() && github.ref == 'refs/heads/main'
     
     steps:
-      - name: 🔍 Checkout code
-        uses: actions/checkout@v4
-
-      - name: 📥 Download JARs
-        uses: actions/download-artifact@v4
+      - name: Trigger Deploy Workflow
+        uses: actions/github-script@v7
         with:
-          name: jars-${{ github.run_id }}
-          path: ./
-
-      - name: 📦 Trigger deploy.yml
-        uses: ./.github/workflows/deploy.yml
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'deploy.yml',
+              ref: context.ref
+            });
+            console.log('✅ Deploy workflow triggered')

@@ -27,10 +27,6 @@ on:
         required: true
       EC2_INSTANCE_ID:
         required: true
-      EC2_SSH_KEY:
-        required: true
-      SSH_HOST:
-        required: true
       SSH_USER:
         required: true
       SSH_KEY:

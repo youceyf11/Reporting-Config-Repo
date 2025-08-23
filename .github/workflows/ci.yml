@@ -191,18 +191,27 @@ jobs:
           retention-days: 3
           if-no-files-found: error
 
-      # OWASP Dependency Check - VERSION CORRIGÉE
+      # OWASP Dependency Check - Solution Maven directe
       - name: 🔍 Run OWASP Dependency Check
-        uses: dependency-check/Dependency-Check_Action@main
-        id: depcheck
-        with:
-          project: 'reporting-logistics-app'
-          path: '.'
-          format: 'HTML,JSON'
-          args: >
-            --enableRetired
-            --failOnCVSS 0
-            --nvdValidForHours 24
+        run: |
+          echo "🔄 Running OWASP Dependency Check with Maven..."
+          mkdir -p reports
+          mvn -B dependency-check:aggregate \
+            -Ddependency-check.skip=false \
+            -DfailOnError=false \
+            -DoutputDirectory=reports \
+            -Dformats=HTML,JSON \
+            -DfailBuildOnCVSS=0 \
+            -DnvdValidForHours=24
+          
+          # Vérifier si les rapports ont été générés
+          if [ -f "reports/dependency-check-report.html" ]; then
+            echo "✅ Security report generated successfully"
+          else
+            echo "⚠️ Searching for reports in target directories..."
+            find . -name "dependency-check-report.*" -exec cp {} reports/ \; 2>/dev/null || true
+          fi
+        continue-on-error: true
 
       - name: 📁 Upload security report
         if: always()

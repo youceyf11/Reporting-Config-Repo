@@ -138,6 +138,10 @@ jobs:
             --output text)
           echo "ec2_ip=$EC2_IP" >> $GITHUB_OUTPUT
           echo "✅ EC2 IP trouvée: $EC2_IP"
+          
+          # Test de connectivité
+          echo "🔍 Test de connectivité vers $EC2_IP:22..."
+          timeout 10 bash -c "</dev/tcp/$EC2_IP/22" && echo "✅ Port 22 accessible" || echo "❌ Port 22 inaccessible"
 
       - name: Deploy application JAR to EC2
         uses: appleboy/scp-action@v0.1.7

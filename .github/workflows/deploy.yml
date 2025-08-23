@@ -36,8 +36,7 @@ on:
       SSH_KEY:
         required: true
   workflow_dispatch:
-  push:
-    branches: [ "main" ]
+ 
 
 permissions:
   contents: read
@@ -58,16 +57,69 @@ jobs:
           : "${{ vars.REGISTRY }}" "${{ vars.IMAGE_NAMESPACE }}" "${{ vars.APP_DIR }}"
           echo "Using registry ${{ vars.REGISTRY }} and namespace ${{ vars.IMAGE_NAMESPACE }}"
 
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-central-1
+    
+      - name: Authorize GitHub Actions IPs in Security Group
+        run: |
+          echo "🔓 Autorisation temporaire GitHub Actions..."
+          
+          # Obtenir le Security Group de l'instance
+          SG_ID=$(aws ec2 describe-instances \
+            --instance-ids ${{ secrets.EC2_INSTANCE_ID }} \
+            --query 'Reservations[0].Instances[0].SecurityGroups[0].GroupId' \
+            --output text)
+          
+          echo "Security Group: $SG_ID"
+          
+          # Obtenir les IP ranges GitHub Actions
+          GITHUB_IPS=$(curl -s https://api.github.com/meta | jq -r '.actions[]' | head -10)
+          
+          # Autoriser temporairement chaque IP range
+          for ip_range in $GITHUB_IPS; do
+            echo "Autorisation: $ip_range"
+            aws ec2 authorize-security-group-ingress \
+              --group-id $SG_ID \
+              --protocol tcp \
+              --port 22 \
+              --cidr $ip_range \
+              --no-cli-pager 2>/dev/null || echo "Déjà autorisé: $ip_range"
+          done
+          
+          echo "sg_id=$SG_ID" >> $GITHUB_OUTPUT
+        id: authorize-sg
+
+      - name: Get EC2 public IP dynamically
+        id: get-ip
+        run: |
+          EC2_IP=$(aws ec2 describe-instances \
+            --instance-ids ${{ secrets.EC2_INSTANCE_ID }} \
+            --query 'Reservations[0].Instances[0].PublicIpAddress' \
+            --output text)
+          echo "ec2_ip=$EC2_IP" >> $GITHUB_OUTPUT
+          echo "✅ EC2 IP trouvée: $EC2_IP"
+          
+          # Test de connectivité
+          echo "🔍 Test de connectivité vers $EC2_IP:22..."
+          timeout 10 bash -c "</dev/tcp/$EC2_IP/22" && echo "✅ Port 22 accessible" || echo "❌ Port 22 inaccessible"
+
       - name: Upload compose.prod.yml to server
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: ${{ secrets.SSH_HOST }}
+          host: ${{ steps.get-ip.outputs.ec2_ip }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
           port: 22
           source: "deploy/compose.prod.yml"
           target: "/opt/reporting-app/"
           strip_components: 1
+          timeout: 60s
+          command_timeout: 10m
+          debug: true
 
       - name: Create .env on server if missing (placeholder)
         uses: appleboy/ssh-action@v1.0.3
@@ -137,56 +189,6 @@ jobs:
             else
               echo ".env already exists; leaving as-is"
             fi
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: eu-central-1
-    
-      - name: Authorize GitHub Actions IPs in Security Group
-        run: |
-          echo "🔓 Autorisation temporaire GitHub Actions..."
-          
-          # Obtenir le Security Group de l'instance
-          SG_ID=$(aws ec2 describe-instances \
-            --instance-ids ${{ secrets.EC2_INSTANCE_ID }} \
-            --query 'Reservations[0].Instances[0].SecurityGroups[0].GroupId' \
-            --output text)
-          
-          echo "Security Group: $SG_ID"
-          
-          # Obtenir les IP ranges GitHub Actions
-          GITHUB_IPS=$(curl -s https://api.github.com/meta | jq -r '.actions[]' | head -10)
-          
-          # Autoriser temporairement chaque IP range
-          for ip_range in $GITHUB_IPS; do
-            echo "Autorisation: $ip_range"
-            aws ec2 authorize-security-group-ingress \
-              --group-id $SG_ID \
-              --protocol tcp \
-              --port 22 \
-              --cidr $ip_range \
-              --no-cli-pager 2>/dev/null || echo "Déjà autorisé: $ip_range"
-          done
-          
-          echo "sg_id=$SG_ID" >> $GITHUB_OUTPUT
-        id: authorize-sg
-
-      - name: Get EC2 public IP dynamically
-        id: get-ip
-        run: |
-          EC2_IP=$(aws ec2 describe-instances \
-            --instance-ids ${{ secrets.EC2_INSTANCE_ID }} \
-            --query 'Reservations[0].Instances[0].PublicIpAddress' \
-            --output text)
-          echo "ec2_ip=$EC2_IP" >> $GITHUB_OUTPUT
-          echo "✅ EC2 IP trouvée: $EC2_IP"
-          
-          # Test de connectivité
-          echo "🔍 Test de connectivité vers $EC2_IP:22..."
-          timeout 10 bash -c "</dev/tcp/$EC2_IP/22" && echo "✅ Port 22 accessible" || echo "❌ Port 22 inaccessible"
 
       - name: Deploy application JAR to EC2
         uses: appleboy/scp-action@v0.1.7

@@ -9,13 +9,13 @@ on:
   pull_request:
     branches:
       - '**'
-  workflow_dispatch:
+  workflow_call:
     inputs:
       reason:
         description: "Reason for manual run"
         required: false
         default: "manual-trigger"
-
+        type: string
 env:
   REGISTRY: ghcr.io
   JAVA_VERSION: '17'
@@ -490,22 +490,16 @@ jobs:
           fi
 
   # Déclencher Deploy après succès
-  trigger-deploy:
-    name: 🔗 Trigger Deploy
+  deploy:
+    name: � Deploy to EC2
     needs: [docker-images, security-scan]
-    runs-on: ubuntu-latest
     if: success() && github.ref == 'refs/heads/main'
-    
-    steps:
-      - name: Trigger Deploy Workflow
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            await github.rest.actions.createWorkflowDispatch({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: 'deploy.yml',
-              ref: context.ref
-            });
-            console.log('✅ Deploy workflow triggered')
+    uses: ./.github/workflows/deploy.yml
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      EC2_INSTANCE_ID: ${{ secrets.EC2_INSTANCE_ID }}
+      EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+      SSH_HOST: ${{ secrets.SSH_HOST }}
+      SSH_USER: ${{ secrets.SSH_USER }}
+      SSH_KEY: ${{ secrets.SSH_KEY }}

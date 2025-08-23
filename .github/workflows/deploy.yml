@@ -16,9 +16,27 @@
 #   SSH_KEY=<private key contents of ~/.ssh/id_ci>
 #   SSH_KNOWN_HOSTS=<output of ssh-keyscan -H <EC2 IP>>
 
-name: Deploy
+name: Deploy 
 
 on:
+  workflow_call:
+    secrets:
+      AWS_ACCESS_KEY_ID:
+        required: true
+      AWS_SECRET_ACCESS_KEY:
+        required: true
+      EC2_INSTANCE_ID:
+        required: true
+      EC2_SSH_KEY:
+        required: true
+      SSH_HOST:
+        required: true
+      SSH_USER:
+        required: true
+      SSH_KEY:
+        required: true
+      GITHUB_TOKEN:
+        required: true
   workflow_dispatch:
   push:
     branches: [ "main" ]
@@ -128,6 +146,35 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: eu-central-1
+    
+      - name: Authorize GitHub Actions IPs in Security Group
+        run: |
+          echo "🔓 Autorisation temporaire GitHub Actions..."
+          
+          # Obtenir le Security Group de l'instance
+          SG_ID=$(aws ec2 describe-instances \
+            --instance-ids ${{ secrets.EC2_INSTANCE_ID }} \
+            --query 'Reservations[0].Instances[0].SecurityGroups[0].GroupId' \
+            --output text)
+          
+          echo "Security Group: $SG_ID"
+          
+          # Obtenir les IP ranges GitHub Actions
+          GITHUB_IPS=$(curl -s https://api.github.com/meta | jq -r '.actions[]' | head -10)
+          
+          # Autoriser temporairement chaque IP range
+          for ip_range in $GITHUB_IPS; do
+            echo "Autorisation: $ip_range"
+            aws ec2 authorize-security-group-ingress \
+              --group-id $SG_ID \
+              --protocol tcp \
+              --port 22 \
+              --cidr $ip_range \
+              --no-cli-pager 2>/dev/null || echo "Déjà autorisé: $ip_range"
+          done
+          
+          echo "sg_id=$SG_ID" >> $GITHUB_OUTPUT
+        id: authorize-sg
 
       - name: Get EC2 public IP dynamically
         id: get-ip

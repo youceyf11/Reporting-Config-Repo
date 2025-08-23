@@ -67,3 +67,23 @@ jobs:
           path: depcheck-artifacts
           if-no-files-found: warn
           retention-days: 7
+
+  trigger-codeql:
+    name: 🔗 Trigger CodeQL
+    needs: depcheck
+    runs-on: ubuntu-latest
+    if: success()
+    
+    steps:
+      - name: Trigger CodeQL Workflow
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'codeql.yml',
+              ref: context.ref
+            });
+            console.log('✅ CodeQL workflow triggered')

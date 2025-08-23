@@ -7,6 +7,7 @@ on:
     branches: ["main"]
   schedule:
     - cron: '0 2 * * 1' # chaque lundi à 02:00 UTC
+  workflow_dispatch: # Permet déclenchement par dependency-check
 
 permissions:
   contents: read
@@ -49,3 +50,10 @@ jobs:
         uses: github/codeql-action/analyze@v3
         with:
           category: "/language:${{ matrix.language }}"
+
+
+  trigger-ci:
+    name: 🔗 Trigger CI Build & Test
+    needs: analyze
+    runs-on: ubuntu-latest
+    if: success()

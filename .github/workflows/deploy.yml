@@ -19,7 +19,24 @@
 name: Deploy 
 
 on:
+  workflow_call:
+    secrets:
+      AWS_ACCESS_KEY_ID:
+        required: true
+      AWS_SECRET_ACCESS_KEY:
+        required: true
+      EC2_INSTANCE_ID:
+        required: true
+      EC2_SSH_KEY:
+        required: true
+      SSH_HOST:
+        required: true
+      SSH_USER:
+        required: true
+      SSH_KEY:
+        required: true
   workflow_dispatch:
+ 
 
 permissions:
   contents: read
@@ -86,9 +103,29 @@ jobs:
           echo "ec2_ip=$EC2_IP" >> $GITHUB_OUTPUT
           echo "✅ EC2 IP trouvée: $EC2_IP"
           
-          # Test de connectivité
-          echo "🔍 Test de connectivité vers $EC2_IP:22..."
+          # Vérifications détaillées
+          echo "🔍 Diagnostics de connectivité..."
+          echo "Instance State: $(aws ec2 describe-instances --instance-ids ${{ secrets.EC2_INSTANCE_ID }} --query 'Reservations[0].Instances[0].State.Name' --output text)"
+          echo "Security Groups: $(aws ec2 describe-instances --instance-ids ${{ secrets.EC2_INSTANCE_ID }} --query 'Reservations[0].Instances[0].SecurityGroups[*].GroupId' --output text)"
+          
+          # Test de connectivité réseau
+          echo "🌐 Test ping vers $EC2_IP..."
+          ping -c 3 $EC2_IP || echo "❌ Ping échoué"
+          
+          # Test port 22
+          echo "🔍 Test port 22 vers $EC2_IP..."
           timeout 10 bash -c "</dev/tcp/$EC2_IP/22" && echo "✅ Port 22 accessible" || echo "❌ Port 22 inaccessible"
+          
+          # Test SSH avec verbose
+          echo "🔐 Test SSH avec clé..."
+          echo "${{ secrets.SSH_KEY }}" > /tmp/ssh_key
+          chmod 600 /tmp/ssh_key
+          timeout 10 ssh -i /tmp/ssh_key -o ConnectTimeout=5 -o StrictHostKeyChecking=no -o BatchMode=yes ${{ secrets.SSH_USER }}@$EC2_IP "echo 'SSH OK'" || echo "❌ SSH échoué"
+          rm -f /tmp/ssh_key
+          
+          # Attendre propagation Security Group
+          echo "⏳ Attente 30 secondes pour propagation Security Group..."
+          sleep 30
 
       - name: Upload compose.prod.yml to server
         uses: appleboy/scp-action@v0.1.7
@@ -127,7 +164,7 @@ jobs:
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           IMAGE_NAMESPACE: ${{ vars.IMAGE_NAMESPACE }}
         with:
-          host: ${{ steps.get-ip.outputs.ec2_ip }}
+          host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
           port: 22
@@ -177,8 +214,8 @@ jobs:
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ steps.get-ip.outputs.ec2_ip }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_KEY }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
           port: "22"
           source: "target/*.jar"
           target: "/home/ubuntu/app/"

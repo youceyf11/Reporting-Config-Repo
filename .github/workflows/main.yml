@@ -1,0 +1,268 @@
+name: CI/CD - Reporting Logistics App
+
+on:
+  push:
+    branches:
+      - '**'
+    tags:
+      - '*'
+  pull_request:
+    branches:
+      - '**'
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: "Reason for manual run"
+        required: false
+        default: "manual-trigger"
+
+env:
+  REGISTRY: ghcr.io
+  JAVA_VERSION: '17'
+
+permissions:
+  contents: read
+  packages: write
+  security-events: write
+
+jobs:
+  build-test:
+    name: 🛠️ Build and Test All Modules
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: jira_db
+          POSTGRES_USER: jira
+          POSTGRES_PASSWORD: secret
+        ports:
+          - 5432:5432
+        options: --health-cmd=pg_isready\ -U\ jira --health-interval=10s --health-timeout=5s --health-retries=20
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: --health-cmd="redis-cli\ ping\ ||\ exit\ 1" --health-interval=10s --health-timeout=5s --health-retries=12
+
+      rabbitmq:
+        image: rabbitmq:3-management
+        env:
+          RABBITMQ_DEFAULT_USER: ci
+          RABBITMQ_DEFAULT_PASS: ci
+        ports:
+          - 5672:5672
+        options: --health-cmd="rabbitmq-diagnostics\ -q\ ping" --health-interval=10s --health-timeout=5s --health-retries=12
+
+      zookeeper:
+        image: bitnami/zookeeper:3
+        env:
+          ALLOW_ANONYMOUS_LOGIN: "yes"
+        ports:
+          - 2181:2181
+        options: --health-cmd="nc\ -z\ 127.0.0.1\ 2181" --health-interval=10s --health-timeout=5s --health-retries=12
+
+      kafka:
+        image: bitnami/kafka:3
+        env:
+          KAFKA_CFG_ZOOKEEPER_CONNECT: zookeeper:2181
+          ALLOW_PLAINTEXT_LISTENER: "yes"
+        ports:
+          - 9092:9092
+        options: --health-cmd="kafka-topics.sh\ --bootstrap-server\ localhost:9092\ --list\ ||\ exit\ 1" --health-interval=10s --health-timeout=5s --health-retries=12
+
+    steps:
+      - name: 🔍 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📦 Cache Maven dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            maven-
+
+      - name: ⚙️ Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: maven
+
+      - name: ⏳ Wait for services to be ready
+        run: |
+          for i in {1..60}; do
+            nc -z localhost 5432 && nc -z localhost 6379 && nc -z localhost 5672 && nc -z localhost 2181 && nc -z localhost 9092 && break
+            echo "Waiting for services... ($i)"
+            sleep 2
+          done
+
+      - name: 🏗️ Build and Test (Maven)
+        run: |
+          mvn -B -T 1C -fae \
+            -Dspring.profiles.active=ci \
+            clean verify
+
+      - name: 📁 Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: |
+            */target/surefire-reports/*.xml
+            */target/failsafe-reports/*.xml
+            */target/site/jacoco/jacoco.xml
+
+      - name: 📁 Upload JARs for reuse
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jars
+          path: */target/*.jar
+
+      - name: 🔍 Run OWASP Dependency-Check
+        uses: docker://owasp/dependency-check:8
+        with:
+          args: >
+            --scan .
+            --format HTML
+            --out dependency-check-report.html
+            --failOnCVSS 0
+
+      - name: 📁 Upload security report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-report
+          path: dependency-check-report.html
+
+  docker-images:
+    name: 🐳 Build and Push Docker Images
+    needs: build-test
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: 🔍 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 📥 Download JARs
+        uses: actions/download-artifact@v4
+        with:
+          name: jars
+          path: ./
+
+      - name: ⚙️ Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - name: 🐳 Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 🔐 Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🧱 Build Docker images
+        run: |
+          TAG=${GITHUB_SHA::7}
+          OWNER_LC=${{ toLower(github.repository_owner) }}
+          for svc in jira-fetch-service reporting-service chart-service email-service excel-service gateway-service discovery-service; do
+            DF="./$svc/Dockerfile"
+            if [ "$svc" = "jira-fetch-service" ]; then
+              DF="./jira-fetch-service/dockerfile"
+            fi
+            echo "🏗️ Building $svc..."
+            docker build -f "$DF" \
+              -t ${{ env.REGISTRY }}/$OWNER_LC/$svc:$TAG \
+              -t ${{ env.REGISTRY }}/$OWNER_LC/$svc:$GITHUB_SHA \
+              ./$svc
+          done
+
+      - name: 🚚 Push Docker images
+        run: |
+          TAG=${GITHUB_SHA::7}
+          OWNER_LC=${{ toLower(github.repository_owner) }}
+          for svc in jira-fetch-service reporting-service chart-service email-service excel-service gateway-service discovery-service; do
+            echo "📤 Pushing $svc..."
+            docker push ${{ env.REGISTRY }}/$OWNER_LC/$svc:$TAG
+            docker push ${{ env.REGISTRY }}/$OWNER_LC/$svc:$GITHUB_SHA
+          done
+
+  security-scan:
+    name: 🔐 Security Scan (SARIF)
+    needs: docker-images
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        svc: [jira-fetch-service, reporting-service, chart-service, email-service, excel-service, gateway-service, discovery-service]
+    steps:
+      - name: 🔐 Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 📦 Cache Trivy DB
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/trivy
+          key: trivy-db-${{ runner.os }}
+          restore-keys: |
+            trivy-db-
+
+      - name: 🕵️ Scan ${{ matrix.svc }} (SARIF)
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ toLower(github.repository_owner) }}/${{ matrix.svc }}:${{ github.sha }}
+          scan-type: image
+          format: sarif
+          output: trivy-${{ matrix.svc }}.sarif
+          severity: CRITICAL,HIGH
+          vuln-type: os,library
+          scanners: vuln
+          ignore-unfixed: true
+          cache-dir: ~/.cache/trivy
+
+      - name: 📤 Upload SARIF to GitHub Security
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-${{ matrix.svc }}.sarif
+
+  publish-reports:
+    name: 📊 Publish Test Reports
+    needs: [build-test, security-scan]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: 📥 Download test reports
+        uses: actions/download-artifact@v4
+        with:
+          name: test-reports
+          path: reports
+
+      - name: 📊 Publish JUnit Report
+        uses: dorny/test-reporter@v1
+        with:
+          name: Test Results
+          path: reports/**/TEST-*.xml
+          reporter: java-junit
+          max-annotations: 10

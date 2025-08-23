@@ -24,6 +24,7 @@ permissions:
   contents: read
   packages: write
   security-events: write
+  checks: write
 
 # Évite les builds en parallèle sur la même branche
 concurrency:
@@ -359,6 +360,7 @@ jobs:
     permissions:
       contents: read
       security-events: write
+      checks: write
     strategy:
       fail-fast: false
       max-parallel: 3

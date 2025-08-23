@@ -122,15 +122,35 @@ jobs:
               echo ".env already exists; leaving as-is"
             fi
 
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-central-1
+
+      - name: Get EC2 public IP dynamically
+        id: get-ip
+        run: |
+          EC2_IP=$(aws ec2 describe-instances \
+            --instance-ids ${{ secrets.EC2_INSTANCE_ID }} \
+            --query 'Reservations[0].Instances[0].PublicIpAddress' \
+            --output text)
+          echo "ec2_ip=$EC2_IP" >> $GITHUB_OUTPUT
+          echo "✅ EC2 IP trouvée: $EC2_IP"
+
       - name: Deploy application JAR to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: 63.177.70.31
+          host: ${{ steps.get-ip.outputs.ec2_ip }}
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
           port: "22"
           source: "target/*.jar"
           target: "/home/ubuntu/app/"
+          timeout: 60s
+          command_timeout: 10m
+          debug: true
 
       - name: Login to GHCR on the server and deploy
         uses: appleboy/ssh-action@v1.0.3
@@ -140,7 +160,7 @@ jobs:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          host: ${{ secrets.SSH_HOST }}
+          host: ${{ steps.get-ip.outputs.ec2_ip }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
           port: 22  
@@ -157,7 +177,7 @@ jobs:
           APP_DIR: ${{ vars.APP_DIR }}
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.SSH_HOST }}
+          host: ${{ steps.get-ip.outputs.ec2_ip }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
           port: 22
@@ -168,12 +188,12 @@ jobs:
               # shellcheck disable=SC2046
               set -a; . ./.env; set +a
               echo "External endpoints:"
-              echo "- Jira Fetch Service:   http://${{ secrets.SSH_HOST }}:${JIRA_FETCH_SERVICE_PORT}"
-              echo "- Reporting Service:    http://${{ secrets.SSH_HOST }}:${REPORTING_SERVICE_PORT}"
-              echo "- Chart Service:        http://${{ secrets.SSH_HOST }}:${CHART_SERVICE_PORT}"
-              echo "- Email Service:        http://${{ secrets.SSH_HOST }}:${EMAIL_SERVICE_PORT}"
-              echo "- Excel Service:        http://${{ secrets.SSH_HOST }}:${EXCEL_SERVICE_PORT}"
-              echo "- RabbitMQ Management:  http://${{ secrets.SSH_HOST }}:${RABBITMQ_MANAGEMENT_PORT}"
+              echo "- Jira Fetch Service:   http://${{ steps.get-ip.outputs.ec2_ip }}:${JIRA_FETCH_SERVICE_PORT}"
+              echo "- Reporting Service:    http://${{ steps.get-ip.outputs.ec2_ip }}:${REPORTING_SERVICE_PORT}"
+              echo "- Chart Service:        http://${{ steps.get-ip.outputs.ec2_ip }}:${CHART_SERVICE_PORT}"
+              echo "- Email Service:        http://${{ steps.get-ip.outputs.ec2_ip }}:${EMAIL_SERVICE_PORT}"
+              echo "- Excel Service:        http://${{ steps.get-ip.outputs.ec2_ip }}:${EXCEL_SERVICE_PORT}"
+              echo "- RabbitMQ Management:  http://${{ steps.get-ip.outputs.ec2_ip }}:${RABBITMQ_MANAGEMENT_PORT}"
             else
               echo ".env not found at ${{ vars.APP_DIR }}/.env; cannot print ports."
             fi
@@ -183,4 +203,4 @@ jobs:
           echo "Verify on server:"
           echo "  docker ps --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}'"
           echo "  docker compose -f ${{ vars.APP_DIR }}/compose.prod.yml ps"
-          echo "From your machine: curl http://${{ secrets.SSH_HOST }}:8082/actuator/health (adjust port)"
+          echo "From your machine: curl http://${{ steps.get-ip.outputs.ec2_ip }}:8082/actuator/health (adjust port)"

@@ -25,6 +25,7 @@ permissions:
   packages: write
   security-events: write
   checks: write
+  actions: write
 
 # Évite les builds en parallèle sur la même branche
 concurrency:

@@ -1,11 +1,10 @@
 name: CI/CD - Reporting Logistics App
-
 on:
   push:
     branches:
       - '**'   
     tags:
-      - '*'    
+      - '*'       
   pull_request:
     branches:
       - '**'   

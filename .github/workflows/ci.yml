@@ -311,14 +311,39 @@ jobs:
             "discovery-service"
           )
           
+          # Fonction de retry pour Docker push
+          push_with_retry() {
+            local image=$1
+            local max_attempts=3
+            local attempt=1
+            
+            while [ $attempt -le $max_attempts ]; do
+              echo "📤 Pushing $image (attempt $attempt/$max_attempts)..."
+              if docker push "$image"; then
+                echo "✅ Successfully pushed $image"
+                return 0
+              else
+                echo "❌ Push failed for $image (attempt $attempt/$max_attempts)"
+                if [ $attempt -lt $max_attempts ]; then
+                  echo "⏳ Waiting 30 seconds before retry..."
+                  sleep 30
+                fi
+                attempt=$((attempt + 1))
+              fi
+            done
+            
+            echo "🚨 Failed to push $image after $max_attempts attempts"
+            return 1
+          }
+          
           for svc in "${services[@]}"; do
             # Vérifier que l'image existe
             if docker image inspect "${{ env.REGISTRY }}/$OWNER_LC/$svc:$TAG" > /dev/null 2>&1; then
-              echo "📤 Pushing $svc..."
-              docker push ${{ env.REGISTRY }}/$OWNER_LC/$svc:$TAG
-              docker push ${{ env.REGISTRY }}/$OWNER_LC/$svc:latest
+              # Push avec retry
+              push_with_retry "${{ env.REGISTRY }}/$OWNER_LC/$svc:$TAG" || echo "⚠️ Failed to push $svc:$TAG"
+              push_with_retry "${{ env.REGISTRY }}/$OWNER_LC/$svc:latest" || echo "⚠️ Failed to push $svc:latest"
             else
-              echo "⚠️  Image $svc:$TAG not found, skipping push"
+              echo "⚠️ Image $svc:$TAG not found, skipping push"
             fi
           done
 

@@ -416,7 +416,10 @@ jobs:
     if: always() && needs.build-test.result != 'cancelled'
     
     steps:
-      - name: 📥 Download test reports
+      - name: � Checkout code
+        uses: actions/checkout@v4
+
+      - name: �📥 Download test reports
         uses: actions/download-artifact@v4
         with:
           name: test-reports-${{ github.run_id }}
@@ -445,6 +448,7 @@ jobs:
           reporter: java-junit
           max-annotations: 10
           fail-on-error: false
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: 📋 Test Summary
         if: always()

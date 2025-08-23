@@ -19,24 +19,7 @@
 name: Deploy 
 
 on:
-  workflow_call:
-    secrets:
-      AWS_ACCESS_KEY_ID:
-        required: true
-      AWS_SECRET_ACCESS_KEY:
-        required: true
-      EC2_INSTANCE_ID:
-        required: true
-      EC2_SSH_KEY:
-        required: true
-      SSH_HOST:
-        required: true
-      SSH_USER:
-        required: true
-      SSH_KEY:
-        required: true
   workflow_dispatch:
- 
 
 permissions:
   contents: read
@@ -144,7 +127,7 @@ jobs:
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           IMAGE_NAMESPACE: ${{ vars.IMAGE_NAMESPACE }}
         with:
-          host: ${{ secrets.SSH_HOST }}
+          host: ${{ steps.get-ip.outputs.ec2_ip }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
           port: 22
@@ -194,8 +177,8 @@ jobs:
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ steps.get-ip.outputs.ec2_ip }}
-          username: ubuntu
-          key: ${{ secrets.EC2_SSH_KEY }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
           port: "22"
           source: "target/*.jar"
           target: "/home/ubuntu/app/"

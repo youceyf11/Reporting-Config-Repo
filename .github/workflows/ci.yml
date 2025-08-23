@@ -191,38 +191,20 @@ jobs:
           retention-days: 3
           if-no-files-found: error
 
-      # OWASP Dependency Check avec retry et fallback
-      - name: 🔍 Run OWASP Dependency Check (Primary)
-        id: depcheck_primary
+      # OWASP Dependency Check - VERSION CORRIGÉE
+      - name: 🔍 Run OWASP Dependency Check
         uses: dependency-check/Dependency-Check_Action@main
-        continue-on-error: true
+        id: depcheck
         with:
           project: 'reporting-logistics-app'
           path: '.'
           format: 'HTML,JSON'
-          out: 'reports'
           args: >
             --enableRetired
             --failOnCVSS 0
             --nvdValidForHours 24
-            --connectionTimeout 30000
-            --readTimeout 60000
 
-      # Fallback avec Maven plugin si l'action échoue
-      - name: � Run OWASP Dependency Check (Fallback)
-        if: steps.depcheck_primary.outcome == 'failure'
-        run: |
-          echo "🔄 Primary dependency check failed, trying Maven plugin..."
-          mkdir -p reports
-          mvn -B dependency-check:aggregate \
-            -Ddependency-check.skip=false \
-            -DfailOnError=false \
-            -DoutputDirectory=reports
-          # Copier les rapports vers le bon répertoire
-          find . -name "dependency-check-report.*" -exec cp {} reports/ \;
-        continue-on-error: true
-
-      - name: �📁 Upload security report
+      - name: 📁 Upload security report
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -230,7 +212,6 @@ jobs:
           path: |
             reports/dependency-check-report.html
             reports/dependency-check-report.json
-            reports/dependency-check-report.xml
           retention-days: 7
           if-no-files-found: warn
 

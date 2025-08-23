@@ -26,6 +26,9 @@ permissions:
   security-events: write
 
 jobs:
+  # ===================================
+  # 1. Build & Test (avec services natifs)
+  # ===================================
   build-test:
     name: 🛠️ Build and Test All Modules
     runs-on: ubuntu-latest
@@ -121,16 +124,12 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: jars
-          path: "**/target/*.jar"
+          path: "*/target/*.jar"
 
       - name: 🔍 Run OWASP Dependency-Check
         uses: docker://owasp/dependency-check:8
         with:
-          args: >
-            --scan .
-            --format HTML
-            --out dependency-check-report.html
-            --failOnCVSS 0
+          args: "--scan . --format HTML --out dependency-check-report.html --failOnCVSS 0"
 
       - name: 📁 Upload security report
         if: always()
@@ -139,6 +138,9 @@ jobs:
           name: security-report
           path: dependency-check-report.html
 
+  # ===================================
+  # 2. Docker Images (Build & Push)
+  # ===================================
   docker-images:
     name: 🐳 Build and Push Docker Images
     needs: build-test
@@ -176,7 +178,7 @@ jobs:
       - name: 🧱 Build Docker images
         run: |
           TAG=${GITHUB_SHA::7}
-          OWNER_LC=${{ toLower(github.repository_owner) }}
+          OWNER_LC=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           for svc in jira-fetch-service reporting-service chart-service email-service excel-service gateway-service discovery-service; do
             DF="./$svc/Dockerfile"
             if [ "$svc" = "jira-fetch-service" ]; then
@@ -192,13 +194,16 @@ jobs:
       - name: 🚚 Push Docker images
         run: |
           TAG=${GITHUB_SHA::7}
-          OWNER_LC=${{ toLower(github.repository_owner) }}
+          OWNER_LC=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           for svc in jira-fetch-service reporting-service chart-service email-service excel-service gateway-service discovery-service; do
             echo "📤 Pushing $svc..."
             docker push ${{ env.REGISTRY }}/$OWNER_LC/$svc:$TAG
             docker push ${{ env.REGISTRY }}/$OWNER_LC/$svc:$GITHUB_SHA
           done
 
+  # ===================================
+  # 3. Security Scan (Trivy + SARIF)
+  # ===================================
   security-scan:
     name: 🔐 Security Scan (SARIF)
     needs: docker-images
@@ -211,14 +216,7 @@ jobs:
       fail-fast: false
       max-parallel: 5
       matrix:
-        svc: 
-          - jira-fetch-service
-          - reporting-service
-          - chart-service
-          - email-service
-          - excel-service
-          - gateway-service
-          - discovery-service
+        svc: [jira-fetch-service, reporting-service, chart-service, email-service, excel-service, gateway-service, discovery-service]
     steps:
       - name: 🔐 Login to GHCR
         uses: docker/login-action@v3
@@ -226,6 +224,11 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🧠 Set OWNER_LC (lowercase)
+        run: |
+          OWNER_LC=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          echo "OWNER_LC=$OWNER_LC" >> $GITHUB_ENV
 
       - name: 📦 Cache Trivy DB
         uses: actions/cache@v4
@@ -238,7 +241,7 @@ jobs:
       - name: 🕵️ Scan ${{ matrix.svc }} (SARIF)
         uses: aquasecurity/trivy-action@0.24.0
         with:
-          image-ref: ${{ env.REGISTRY }}/${{ toLower(github.repository_owner) }}/${{ matrix.svc }}:${{ github.sha }}
+          image-ref: ${{ env.REGISTRY }}/${{ env.OWNER_LC }}/${{ matrix.svc }}:${{ github.sha }}
           scan-type: image
           format: sarif
           output: trivy-${{ matrix.svc }}.sarif
@@ -254,6 +257,9 @@ jobs:
         with:
           sarif_file: trivy-${{ matrix.svc }}.sarif
 
+  # ===================================
+  # 4. Publish Test Reports (Optional)
+  # ===================================
   publish-reports:
     name: 📊 Publish Test Reports
     needs: [build-test, security-scan]

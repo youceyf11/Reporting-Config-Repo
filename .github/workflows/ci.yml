@@ -491,7 +491,7 @@ jobs:
 
   # Déclencher Deploy après succès
   deploy:
-    name: 🚀 Deploy to EC2
+    name: 🚀 Deploy to ECS
     needs: [docker-images, security-scan]
     if: success() && github.ref == 'refs/heads/main'
     # Force workflow refresh - updated 2025-08-25

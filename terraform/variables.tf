@@ -21,7 +21,7 @@ variable "service_names" {
   type        = list(string)
   default = [
     "gateway-service",
-    "jira-fetch-service", 
+    "jira-fetch-service",
     "reporting-service",
     "chart-service",
     "email-service",
@@ -52,17 +52,17 @@ variable "db_password" {
 variable "task_cpu" {
   description = "CPU units for ECS tasks (256 = 0.25 vCPU)"
   type        = number
-  default     = 256  # Minimum for Fargate, Free Tier friendly
+  default     = 256 # Minimum for Fargate, Free Tier friendly
 }
 
 variable "task_memory" {
   description = "Memory for ECS tasks in MB"
   type        = number
-  default     = 512  # Minimum for Fargate, Free Tier friendly
+  default     = 512 # Minimum for Fargate, Free Tier friendly
 }
 
 variable "desired_count" {
   description = "Desired number of tasks per service"
   type        = number
-  default     = 1  # Single instance to minimize costs
+  default     = 1 # Single instance to minimize costs
 }

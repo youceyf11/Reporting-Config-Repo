@@ -158,14 +158,14 @@ resource "aws_db_subnet_group" "main" {
 resource "aws_db_instance" "postgres" {
   identifier = "${var.project_name}-postgres"
 
-  engine         = "postgres"     
+  engine         = "postgres"
   engine_version = "15.7"
-  instance_class = "db.t3.micro"  # Free Tier
+  instance_class = "db.t3.micro" # Free Tier
 
-  allocated_storage     = 20  # Free Tier: up to 20GB
+  allocated_storage     = 20 # Free Tier: up to 20GB
   max_allocated_storage = 20
   storage_type          = "gp2"
-  storage_encrypted     = false  # Free Tier doesn't include encryption
+  storage_encrypted     = false # Free Tier doesn't include encryption
 
   db_name  = var.db_name
   username = var.db_username
@@ -174,9 +174,9 @@ resource "aws_db_instance" "postgres" {
   vpc_security_group_ids = [aws_security_group.rds.id]
   db_subnet_group_name   = aws_db_subnet_group.main.name
 
-  backup_retention_period = 0  # No backups to stay in Free Tier
-  backup_window          = "03:00-04:00"
-  maintenance_window     = "sun:04:00-sun:05:00"
+  backup_retention_period = 0 # No backups to stay in Free Tier
+  backup_window           = "03:00-04:00"
+  maintenance_window      = "sun:04:00-sun:05:00"
 
   skip_final_snapshot = true
   deletion_protection = false
@@ -243,7 +243,7 @@ resource "aws_ecs_cluster" "main" {
 
   setting {
     name  = "containerInsights"
-    value = "disabled"  # Free Tier
+    value = "disabled" # Free Tier
   }
 
   tags = {
@@ -256,7 +256,7 @@ resource "aws_cloudwatch_log_group" "services" {
   for_each = toset(var.service_names)
 
   name              = "/ecs/${each.key}"
-  retention_in_days = 1  # Minimal retention for Free Tier
+  retention_in_days = 1 # Minimal retention for Free Tier
 
   tags = {
     Name = "${var.project_name}-${each.key}-logs"
@@ -335,7 +335,7 @@ resource "aws_ecr_repository" "services" {
   image_tag_mutability = "MUTABLE"
 
   image_scanning_configuration {
-    scan_on_push = false  # Free Tier
+    scan_on_push = false # Free Tier
   }
 
   tags = {

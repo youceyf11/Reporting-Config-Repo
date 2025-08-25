@@ -13,7 +13,7 @@ resource "aws_ecs_task_definition" "services" {
     {
       name  = each.key
       image = "${aws_ecr_repository.services[each.key].repository_url}:latest"
-      
+
       portMappings = [
         {
           containerPort = local.service_ports[each.key]
@@ -98,7 +98,7 @@ resource "aws_ecs_service" "services" {
   network_configuration {
     subnets          = aws_subnet.public[*].id
     security_groups  = [aws_security_group.ecs_tasks.id]
-    assign_public_ip = true  # Required for public subnets without NAT
+    assign_public_ip = true # Required for public subnets without NAT
   }
 
   # Only attach load balancer to gateway-service - COMMENTED OUT DUE TO ALB RESTRICTION
@@ -124,11 +124,11 @@ resource "aws_ecs_service" "services" {
 # Local values for service ports
 locals {
   service_ports = {
-    "gateway-service"     = 8086
-    "jira-fetch-service"  = 8081
-    "reporting-service"   = 8082
-    "chart-service"       = 8083
-    "email-service"       = 8084
-    "excel-service"       = 8085
+    "gateway-service"    = 8086
+    "jira-fetch-service" = 8081
+    "reporting-service"  = 8082
+    "chart-service"      = 8083
+    "email-service"      = 8084
+    "excel-service"      = 8085
   }
 }

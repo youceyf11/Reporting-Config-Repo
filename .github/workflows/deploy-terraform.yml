@@ -1,4 +1,4 @@
-name: Deploy Infrastructure with Terraform
+name: Deploy ECS Infrastructure with Terraform
 
 on:
   workflow_call:

@@ -52,11 +52,11 @@ output "secret_arn" {
 output "deployment_info" {
   description = "Important deployment information"
   value = {
-    region           = var.aws_region
-    cluster_name     = aws_ecs_cluster.main.name
+    region       = var.aws_region
+    cluster_name = aws_ecs_cluster.main.name
     # load_balancer_url = "http://${aws_lb.main.dns_name}"  # Commented out due to ALB restriction
     database_endpoint = aws_db_instance.postgres.endpoint
-    secret_name      = aws_secretsmanager_secret.app_config.name
+    secret_name       = aws_secretsmanager_secret.app_config.name
   }
 }
 
@@ -64,13 +64,13 @@ output "deployment_info" {
 output "estimated_monthly_cost" {
   description = "Estimated monthly cost breakdown (Free Tier)"
   value = {
-    fargate_tasks    = "~$0 (Free Tier: 20GB-hours/month)"
-    rds_postgres     = "~$0 (Free Tier: 750 hours db.t3.micro)"
+    fargate_tasks = "~$0 (Free Tier: 20GB-hours/month)"
+    rds_postgres  = "~$0 (Free Tier: 750 hours db.t3.micro)"
     # application_lb   = "~$16.20 (750 hours + 15GB data processing)"  # Commented out - no ALB
-    data_transfer    = "~$0 (Free Tier: 15GB out/month)"
-    cloudwatch_logs  = "~$0 (Free Tier: 5GB ingestion)"
-    secrets_manager  = "~$0.40 (1 secret)"
-    ecr_storage      = "~$0 (Free Tier: 500MB)"
-    total_estimated  = "~$0.40/month (after Free Tier, no ALB)"
+    data_transfer   = "~$0 (Free Tier: 15GB out/month)"
+    cloudwatch_logs = "~$0 (Free Tier: 5GB ingestion)"
+    secrets_manager = "~$0.40 (1 secret)"
+    ecr_storage     = "~$0 (Free Tier: 500MB)"
+    total_estimated = "~$0.40/month (after Free Tier, no ALB)"
   }
 }

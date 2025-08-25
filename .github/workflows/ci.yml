@@ -494,7 +494,8 @@ jobs:
     name: 🚀 Deploy to EC2
     needs: [docker-images, security-scan]
     if: success() && github.ref == 'refs/heads/main'
-    uses: ./.github/workflows/deploy.yml
+    # Force workflow refresh - updated 2025-08-25
+    uses: ./.github/workflows/deploy-terraform.yml
     secrets:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}

@@ -1,6 +1,18 @@
 name: Deploy Infrastructure with Terraform
 
 on:
+  workflow_call:
+    secrets:
+      AWS_ACCESS_KEY_ID:
+        required: true
+      AWS_SECRET_ACCESS_KEY:
+        required: true
+      EC2_INSTANCE_ID:
+        required: true
+      SSH_USER:
+        required: true
+      SSH_KEY:
+        required: true
   workflow_dispatch:
     inputs:
       environment:
@@ -89,7 +101,7 @@ jobs:
     - name: Output Infrastructure Info
       if: github.event.inputs.action == 'apply'
       run: |
-        echo "## Infrastructure Deployed Successfully! 🚀" >> $GITHUB_STEP_SUMMARY
+        echo "## Infrastructure Deployed Successfully! " >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### Access Information:" >> $GITHUB_STEP_SUMMARY
         echo "- **Load Balancer URL:** $(terraform output -raw load_balancer_url)" >> $GITHUB_STEP_SUMMARY

@@ -1,8 +1,10 @@
 spring:
   application:
     name: reporting-service
+  profiles:
+    active: default
   datasource:
-    url: jdbc:postgresql://postgres:5432/reporting_db
+    url: jdbc:postgresql://localhost:5432/reporting_db
     username: reporting
     password: postgres
     driver-class-name: org.postgresql.Driver
@@ -15,14 +17,17 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
 
   config:
-    import: "configserver:http://config-server:8888"
+    import: "configserver:http://localhost:8888"
 
   data:
     rest:
       base-path: /api
 
+  webflux:
+    base-path: /api/reporting
+
   kafka:
-    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
 
 server:
   port: 8082
@@ -30,11 +35,11 @@ server:
 eureka:
   client:
     service-url:
-      defaultZone: http://eureka-server:8761/eureka/
+      defaultZone: http://localhost:8761/eureka/
     register-with-eureka: true
     fetch-registry: true
   instance:
-    prefer-ip-address: true
+    prefer-ip-address: false
 
 management:
   endpoints:
@@ -58,7 +63,7 @@ logging:
 
 jira:
   fetch:
-    base-url: ${JIRA_FETCH_BASE_URL:http://jira-fetch-service:8081}
+    base-url: ${JIRA_FETCH_BASE_URL:http://localhost:8081}
 
 reporting:
   expected-hours-per-month: 160

@@ -10,7 +10,7 @@ spring:
         git:
           uri: https://github.com/youceyf11/Reporting-Config-Repo.git
           search-paths:
-            - . 
+            - .
         health:
           enabled: true
 

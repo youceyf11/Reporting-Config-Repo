@@ -1,0 +1,36 @@
+spring:
+  application:
+    name: issue-events
+  config:
+    import: "configserver:http://config-server:8888"
+
+server:
+  port: 8087
+
+eureka:
+  client:
+    enabled: true
+    service-url:
+      defaultZone: "http://eureka-server:8761/eureka/"
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    prefer-ip-address: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include:
+          - health
+          - info
+          - eureka
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    org.springframework.cloud.config: DEBUG
+    com.netflix.eureka: DEBUG

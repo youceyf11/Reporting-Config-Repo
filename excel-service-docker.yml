@@ -1,0 +1,65 @@
+spring:
+  application:
+    name: excel-service
+
+  config:
+    import: "configserver:http://config-server:8888"
+
+  kafka:
+    bootstrap-servers: kafka:9092
+
+server:
+  port: 8085
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://eureka-server:8761/eureka/
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    prefer-ip-address: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,eureka
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    org:
+      springframework:
+        cloud:
+          config: DEBUG
+        web:
+          reactive:
+            function:
+              client: DEBUG
+
+    project:
+      excelservice:
+        service: DEBUG
+        controller: DEBUG
+        repository: DEBUG
+        util: DEBUG
+
+    com:
+      netflix:
+        eureka: DEBUG
+
+
+reporting:
+  base-url: ${REPORTING_SERVICE_URL:http://reporting-service:8082}
+
+excel:
+  checkpoint:
+    dir: ${EXCEL_CHECKPOINT_DIR:./checkpoints}
+  file:
+    dir: ${EXCEL_REPORTS_DIR:./reports}
+  reports:
+    dir: ${EXCEL_REPORTS_DIR:./reports}

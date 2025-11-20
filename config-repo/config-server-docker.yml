@@ -1,6 +1,8 @@
 server:
   port: 8888
 spring:
+  application:
+    name: config-server
   cloud:
     config:
       server:
@@ -11,6 +13,7 @@ spring:
           clone-on-start: true
           force-pull: true
           timeout: 180
+          basedir: /config-repo-cache
 logging:
   level:
     root: INFO

@@ -10,52 +10,16 @@ spring:
           enabled: true
           lower-case-service-id: true
       routes:
-        - id: user-service-auth
-          uri: lb://user-service
+        - id: jira-fetch-service
+          uri: lb://jira-fetch-service
           predicates:
-            - Path=/api/auth/**
+            - Path=/api/jira/**
           filters:
             - StripPrefix=1
             - name: CircuitBreaker
               args:
-                name: userServiceCircuitBreaker
-                fallbackUri: forward:/fallback/users
-
-        - id: user-service
-          uri: lb://user-service
-          predicates:
-            - Path=/api/users/**
-          filters:
-            - name: CircuitBreaker
-              args:
-                name: userServiceCircuitBreaker
-                fallbackUri: forward:/fallback/users
-
-        - id: inscription-service
-          uri: lb://inscription-service
-          predicates:
-            - Path=/api/dossiers/**
-            - Path=/api/campagnes/**
-
-        - id: soutenance-service
-          uri: lb://soutenance-service
-          predicates:
-            - Path=/api/soutenances/**
-
-      globalcors:
-        cors-configurations:
-          '[/**]':
-            allowed-origins: "*"
-            allowed-methods:
-              - GET
-              - POST
-              - PUT
-              - DELETE
-              - OPTIONS
-              - PATCH
-            allowed-headers: "*"
-            allow-credentials: true
-            max-age: 3600
+                name: jiraServiceCircuitBreaker
+                fallbackUri: forward:/fallback/jira
 
 eureka:
   client:
@@ -66,11 +30,16 @@ eureka:
   instance:
     prefer-ip-address: true
 
-
 resilience4j:
   circuitbreaker:
     instances:
       userServiceCircuitBreaker:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+        permitted-number-of-calls-in-half-open-state: 3
+
+      jiraServiceCircuitBreaker:
         sliding-window-size: 10
         failure-rate-threshold: 50
         wait-duration-in-open-state: 10s

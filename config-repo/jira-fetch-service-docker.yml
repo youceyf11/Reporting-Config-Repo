@@ -15,9 +15,14 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
   kafka:
     bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
-
-  config:
-    import: "configserver:http://config-server:8888"
+  cloud:
+    config:
+      fail-fast: true  # Enable for debugging
+      retry:
+        max-attempts: 10
+        initial-interval: 5000
+        multiplier: 1.5
+        max-interval: 15000
 
 server:
   port: 8081
@@ -29,7 +34,7 @@ eureka:
     register-with-eureka: true
     fetch-registry: true
   instance:
-    prefer-ip-address: true
+    prefer-ip-address: true  # Use IP in Docker
 
 management:
   endpoints:
@@ -42,6 +47,7 @@ management:
 
 logging:
   level:
-    org:
-      project:
-        jirafetchservice: DEBUG
+    org.project.jirafetchservice: DEBUG
+    org.springframework.cloud.config: DEBUG  # Added
+    org.eclipse.jgit: DEBUG  # Added
+    org.springframework.cloud.netflix.eureka: DEBUG  # Added

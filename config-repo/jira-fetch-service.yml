@@ -30,13 +30,22 @@ spring:
     init:
       mode: always
 
+  cloud:
+    config:
+      fail-fast: true  # Enable to surface config issues early
+      retry:
+        max-attempts: 10
+        initial-interval: 5000
+        multiplier: 1.5
+        max-interval: 15000
+
 eureka:
   client:
     service-url:
       defaultZone: http://localhost:8761/eureka/
   instance:
     hostname: localhost
-    prefer-ip-address: false
+    prefer-ip-address: true  # Use IP for local dev
 
 management:
   endpoints:
@@ -50,6 +59,9 @@ management:
 
 logging:
   level:
-    com.doctorat.inscription: DEBUG
+    org.project.jirafetchservice: DEBUG
     org.springframework.kafka: INFO
     org.hibernate.SQL: DEBUG
+    org.springframework.cloud.config: DEBUG  # Added for config debugging
+    org.eclipse.jgit: DEBUG  # Added for Git issues
+    org.springframework.cloud.netflix.eureka: DEBUG  # For Eureka registration

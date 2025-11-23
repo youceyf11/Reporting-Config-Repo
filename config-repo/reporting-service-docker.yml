@@ -21,6 +21,14 @@ spring:
     rest:
       base-path: /api
 
+  cloud:
+    config:
+      request:
+        read-timeout: 180000
+        connect-timeout: 10000
+      fail-fast: false
+
+    
   kafka:
     bootstrap-servers: kafka:29092
     consumer:

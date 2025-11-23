@@ -21,6 +21,11 @@ spring:
                 name: jiraServiceCircuitBreaker
                 fallbackUri: forward:/fallback/jira
 
+        - id: reporting-service
+          uri: lb://reporting-service
+          predicates:
+              - Path=/api/reports/**
+
 eureka:
   client:
     service-url:

@@ -2,7 +2,7 @@ spring:
   application:
     name: reporting-service
   datasource:
-    url: jdbc:postgresql://postgres:5432/reporting_db
+    url: jdbc:postgresql://postgres-secondary:5432/reporting_db
     username: reporting
     password: postgres
     driver-class-name: org.postgresql.Driver
@@ -22,7 +22,19 @@ spring:
       base-path: /api
 
   kafka:
-    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
+    bootstrap-servers: kafka:29092
+    consumer:
+      group-id: reporting-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
+
+
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.r2dbc.R2dbcAutoConfiguration
 
 server:
   port: 8082

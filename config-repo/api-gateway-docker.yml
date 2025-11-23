@@ -15,7 +15,6 @@ spring:
           predicates:
             - Path=/api/jira/**
           filters:
-            - StripPrefix=1
             - name: CircuitBreaker
               args:
                 name: jiraServiceCircuitBreaker

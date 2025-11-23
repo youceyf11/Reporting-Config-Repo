@@ -20,8 +20,6 @@ spring:
           uri: lb://jira-fetch-service
           predicates:
               - Path=/api/jira/**
-          filters:
-              - StripPrefix=1
 
         - id: reporting-service
           uri: lb://reporting-service

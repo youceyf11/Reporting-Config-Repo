@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS jira_issue (
-    id VARCHAR(255) PRIMARY KEY,
-    issue_key VARCHAR(255) UNIQUE NOT NULL,
+    issue_key VARCHAR(255) PRIMARY KEY,
+    jira_id VARCHAR(255),
     project_key VARCHAR(255),
     self_url VARCHAR(500),
     summary TEXT,
@@ -16,13 +16,7 @@ CREATE TABLE IF NOT EXISTS jira_issue (
     updated TIMESTAMP,
     resolved TIMESTAMP,
     time_spent_seconds BIGINT,
-    organization VARCHAR(255),
-    classification VARCHAR(255),
-    entity VARCHAR(255),
-    issue_quality VARCHAR(255),
-    medium VARCHAR(255),
-    tts_days DECIMAL(10,2),
-    site VARCHAR(255),
-    issue_month VARCHAR(255),
-    quota_per_project VARCHAR(255)
+    original_estimate_seconds BIGINT,
+    remaining_estimate_seconds BIGINT,
+    story_points DECIMAL(10,1)
 );

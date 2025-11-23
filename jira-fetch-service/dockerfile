@@ -1,6 +1,5 @@
-# jira-fetch-service/Dockerfile
-FROM eclipse-temurin:21-jre
+FROM eclipse-temurin:21-jdk
 WORKDIR /app
-ARG JAR_FILE=target/*.jar     
-COPY ${JAR_FILE} app.jar
-ENTRYPOINT ["java","-jar","app.jar"]
+COPY target/jira-fetch-service-0.0.1-SNAPSHOT.jar jira-fetch-service.jar
+EXPOSE 8081
+ENTRYPOINT ["java", "-jar", "jira-fetch-service.jar"]

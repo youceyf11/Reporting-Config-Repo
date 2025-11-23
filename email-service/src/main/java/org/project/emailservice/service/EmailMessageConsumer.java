@@ -5,9 +5,12 @@ import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.project.emailservice.config.RabbitMQReactiveConfig;
 import org.project.emailservice.dto.EmailMessagePayload;
+import org.project.emailservice.dto.EmailRequest;
 import org.project.emailservice.enums.EmailStatus;
 import org.springframework.stereotype.Service;
 import reactor.core.Disposable;
@@ -24,6 +27,7 @@ public class EmailMessageConsumer {
   private final Receiver receiver;
   private final ProviderService providerService;
   private final EmailService emailService;
+  private final TemplateService templateService;
   private final ObjectMapper objectMapper;
   private Disposable subscription;
 
@@ -31,10 +35,12 @@ public class EmailMessageConsumer {
       Receiver receiver,
       ProviderService providerService,
       EmailService emailService,
+      TemplateService templateService,
       ObjectMapper objectMapper) {
     this.receiver = receiver;
     this.providerService = providerService;
     this.emailService = emailService;
+    this.templateService = templateService;
     this.objectMapper = objectMapper;
   }
 
@@ -148,36 +154,77 @@ public class EmailMessageConsumer {
                   "Processing email request from queue for ID: {} using routingKey: {}",
                   payload.getEmailId(),
                   payload.getRoutingKey());
-              return providerService
-                  .sendEmail(payload.getRequest())
-                  .flatMap(
-                      msgId -> {
-                        // Mark as SENT in Redis
-                        return emailService
-                            .updateEmailStatus(payload.getEmailId(), EmailStatus.SENT, null)
-                            .thenReturn(msgId);
-                      })
-                  .doOnSubscribe(
-                      s ->
-                          log.debug(
-                              "Invoking ProviderService for emailId={}", payload.getEmailId()))
-                  .doOnSuccess(
-                      mId ->
-                          log.info(
-                              "Successfully sent email for ID: {} , provider messageId={}",
-                              payload.getEmailId(),
-                              mId))
-                  .onErrorResume(
-                      e -> {
-                        log.error("ProviderService failed for emailId={}", payload.getEmailId(), e);
-                        // Mark as FAILED in Redis
-                        return emailService
-                            .updateEmailStatus(
-                                payload.getEmailId(), EmailStatus.FAILED, e.getMessage())
-                            .then(Mono.error(e));
-                      })
-                  .then();
+              
+              // Render template if templateName is provided
+              return renderEmailTemplate(payload.getRequest())
+                  .flatMap(emailRequestWithContent -> 
+                      providerService
+                          .sendEmail(emailRequestWithContent)
+                          .flatMap(
+                              msgId -> {
+                                // Mark as SENT in Redis
+                                return emailService
+                                    .updateEmailStatus(payload.getEmailId(), EmailStatus.SENT, null)
+                                    .thenReturn(msgId);
+                              })
+                          .doOnSubscribe(
+                              s ->
+                                  log.debug(
+                                      "Invoking ProviderService for emailId={}", payload.getEmailId()))
+                          .doOnSuccess(
+                              mId ->
+                                  log.info(
+                                      "Successfully sent email for ID: {} , provider messageId={}",
+                                      payload.getEmailId(),
+                                      mId))
+                          .onErrorResume(
+                              e -> {
+                                log.error("ProviderService failed for emailId={}", payload.getEmailId(), e);
+                                // Mark as FAILED in Redis
+                                return emailService
+                                    .updateEmailStatus(
+                                        payload.getEmailId(), EmailStatus.FAILED, e.getMessage())
+                                    .then(Mono.error(e));
+                              })
+                          .then());
             });
+  }
+
+  private Mono<EmailRequest> renderEmailTemplate(EmailRequest request) {
+    // If no template name is specified, return the request as-is
+    if (request.getTemplateName() == null || request.getTemplateName().isEmpty()) {
+      return Mono.just(request);
+    }
+    
+    // Render the template with the provided template data
+    return templateService.renderTemplate(request.getTemplateName(), request.getTemplateData())
+        .map(htmlContent -> {
+          // Create a new request with the rendered HTML content
+          Map<String, Object> updatedTemplateData = new HashMap<>();
+          if (request.getTemplateData() != null) {
+            updatedTemplateData.putAll(request.getTemplateData());
+          }
+          updatedTemplateData.put("htmlContent", htmlContent);
+          
+          return request.toBuilder()
+              .templateData(updatedTemplateData)
+              .build();
+        })
+        .doOnSuccess(req -> log.debug("Template rendered successfully for email"))
+        .onErrorResume(e -> {
+          log.error("Failed to render template: {}", request.getTemplateName(), e);
+          // Fallback to simple template
+          return templateService.renderSimpleTemplate(
+              request.getSubject() != null ? request.getSubject() : "Email",
+              "Email content could not be rendered properly.")
+              .map(htmlContent -> {
+                Map<String, Object> fallbackData = new HashMap<>();
+                fallbackData.put("htmlContent", htmlContent);
+                return request.toBuilder()
+                    .templateData(fallbackData)
+                    .build();
+              });
+        });
   }
 
   /** Traite le delivery et gère les ACK/NACK. */

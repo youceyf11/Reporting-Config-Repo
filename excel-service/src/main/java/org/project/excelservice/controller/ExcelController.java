@@ -3,6 +3,7 @@ package org.project.excelservice.controller;
 import lombok.extern.slf4j.Slf4j;
 import org.project.excelservice.service.ExcelReportService;
 import org.project.excelservice.service.ExcelSyncService;
+import org.project.excelservice.service.KpiExcelReportService;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -21,12 +22,14 @@ import reactor.core.publisher.Mono;
 public class ExcelController {
 
   private final ExcelSyncService excelSyncService;
-
   private final ExcelReportService excelReportService;
+  private final KpiExcelReportService kpiExcelReportService;
 
-  public ExcelController(ExcelSyncService excelSyncService, ExcelReportService excelReportService) {
+  public ExcelController(ExcelSyncService excelSyncService, ExcelReportService excelReportService, 
+                        KpiExcelReportService kpiExcelReportService) {
     this.excelSyncService = excelSyncService;
     this.excelReportService = excelReportService;
+    this.kpiExcelReportService = kpiExcelReportService;
   }
 
   @GetMapping("/{projectKey}")
@@ -58,5 +61,56 @@ public class ExcelController {
                         MediaType.parseMediaType(
                             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
                     .body(bytes));
+  }
+
+  @GetMapping(
+      value = "/kpi-report",
+      produces = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+  public Mono<ResponseEntity<ByteArrayResource>> downloadKpiReport(@RequestParam String projectKey) {
+    log.info("📊 Generating comprehensive KPI Excel report for project: {}", projectKey);
+    
+    return Mono.fromSupplier(() -> kpiExcelReportService.generateSimpleReport(projectKey))
+        .map(bytes -> {
+          String filename = String.format("KPI_Dashboard_%s_%s.xlsx", 
+              projectKey, 
+              java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")));
+          
+          return ResponseEntity.ok()
+              .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+              .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+              .body(bytes);
+        })
+        .onErrorResume(error -> {
+          log.error("❌ Failed to generate KPI report for project {}: {}", projectKey, error.getMessage());
+          return Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build());
+        });
+  }
+
+  @GetMapping(
+      value = "/simple-report",
+      produces = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+  public Mono<ResponseEntity<ByteArrayResource>> downloadSimpleReport(@RequestParam String projectKey) {
+    log.info("Generating simple Excel report for project: {}", projectKey);
+    
+    return Mono.fromSupplier(() -> kpiExcelReportService.generateSimpleReport(projectKey))
+        .map(bytes -> {
+          String filename = String.format("Monthly_Report_%s_%s.xlsx", 
+              projectKey, 
+              java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")));
+          
+          return ResponseEntity.ok()
+              .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+              .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+              .body(bytes);
+        })
+        .onErrorResume(error -> {
+          log.error("Failed to generate simple report for project {}: {}", projectKey, error.getMessage());
+          return Mono.just(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build());
+        });
+  }
+
+  @GetMapping("/health")
+  public Mono<ResponseEntity<String>> health() {
+    return Mono.just(ResponseEntity.ok("Excel Service is healthy! 📊✅"));
   }
 }

@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.project.emailservice.dto.EmailAttachment;
 import org.project.emailservice.dto.EmailRequest;
 import org.project.emailservice.dto.EmailResponse;
+import org.project.emailservice.dto.BulkStatusRequest;
 import org.project.emailservice.service.EmailService;
 import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.http.MediaType;
@@ -129,9 +130,8 @@ public class EmailController {
         .defaultIfEmpty(ResponseEntity.notFound().build());
   }
 
-  @GetMapping("/status/bulk")
-  public Flux<EmailResponse> getBulkEmailStatus(@RequestParam List<String> emailIds) {
-
-    return emailService.getBulkEmailStatus(emailIds);
+  @PostMapping("/status/bulk")
+  public Flux<EmailResponse> getBulkEmailStatus(@RequestBody @Valid BulkStatusRequest request) {
+    return emailService.getBulkEmailStatus(request.getEmailIds());
   }
 }

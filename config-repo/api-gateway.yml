@@ -23,6 +23,10 @@ spring:
           filters:
               - StripPrefix=1
 
+        - id: reporting-service
+          uri: lb://reporting-service
+          predicates:
+            - Path=/api/reports/**
 
 resilience4j:
   circuitbreaker:

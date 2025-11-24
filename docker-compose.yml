@@ -45,9 +45,8 @@ services:
     - reporting-network
    volumes:
     - postgres-secondary-data:/var/lib/postgresql/data
-    - ./init-secondary-db.sql:/docker-entrypoint-initdb.d/
    healthcheck:
-    test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+    test: [ "CMD-SHELL", "pg_isready -U reporting" ]
     interval: 10s
     timeout: 5s
     retries: 5
@@ -224,6 +223,9 @@ services:
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
       SPRING_CONFIG_IMPORT: configserver:http://config-server:8888
       LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_CLOUD_CONFIG: DEBUG
+      SPRING_CLOUD_CONFIG_FAIL_FAST: "false"
+      SPRING_CLOUD_CONFIG_REQUEST_READ_TIMEOUT: 180000
+      SPRING_CLOUD_CONFIG_REQUEST_CONNECT_TIMEOUT: 10000
     ports:
       - "8080:8080"
     networks:
@@ -301,21 +303,27 @@ services:
       - "${REPORTING_SERVICE_PORT:-8082}:8082"
     env_file: .env
     environment:
-      - JIRA_FETCH_BASE_URL=${JIRA_FETCH_BASE_URL:-http://jira-fetch-service:8081}
       - SPRING_PROFILES_ACTIVE=docker
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-secondary:5432/reporting_db
-      - SPRING_DATASOURCE_USERNAME=${SECOND_POSTGRES_USER:-reporting}
-      - SPRING_DATASOURCE_PASSWORD=${SECOND_POSTGRES_PASSWORD:-password}
+      - SPRING_DATASOURCE_USERNAME=${SECOND_POSTGRES_USER}
+      - SPRING_DATASOURCE_PASSWORD=${SECOND_POSTGRES_PASSWORD}
       - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
-      - SPRING_CLOUD_CONFIG_FAIL_FAST=false
-      - SPRING_CLOUD_CONFIG_REQUEST_READ_TIMEOUT=60000
+      - SPRING_CLOUD_CONFIG_REQUEST_READ_TIMEOUT=180000
       - SPRING_CLOUD_CONFIG_REQUEST_CONNECT_TIMEOUT=10000
+      - SPRING_CLOUD_CONFIG_FAIL_FAST=true
+      - SPRING_CLOUD_CONFIG_RETRY_MAX_ATTEMPTS=20
+      - SPRING_CLOUD_CONFIG_RETRY_INITIAL_INTERVAL=3000
+      - SPRING_CLOUD_CONFIG_RETRY_MAX_INTERVAL=5000
       - SPRING_CONFIG_IMPORT=configserver:http://config-server:8888
       - EUREKA_INSTANCE_HOSTNAME=reporting-service
       - EUREKA_INSTANCE_PREFER_IP_ADDRESS=false
+      - LOGGING_LEVEL_ORG_ECLIPSE_JGIT=DEBUG
+      - LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_CLOUD_CONFIG=DEBUG
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
       - EUREKA_CLIENT_ENABLED=true
       - SPRING_CLOUD_DISCOVERY_ENABLED=true
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+      - SPRING_JPA_SHOW_SQL=true
     networks:
       - reporting-network
     depends_on:
@@ -325,16 +333,16 @@ services:
         condition: service_healthy
       jira-fetch-service:
         condition: service_healthy
-      postgres:
-        condition: service_healthy
       kafka:
+        condition: service_healthy
+      postgres-secondary:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8082/actuator/health"]
       interval: 10s
       timeout: 5s
-      retries: 5
-      start_period: 60s
+      retries: 30
+      start_period: 180s
     restart: unless-stopped
 
   chart-service:
@@ -471,47 +479,48 @@ services:
       start_period: 60s
     restart: unless-stopped
 
-  issue-events:
-    build:
-      context: ./issue-events
-      dockerfile: Dockerfile
-    container_name: issue-events
-    ports:
-      - "${ISSUE_EVENTS_PORT:-8087}:8087"
-    env_file: .env
-    environment:
-      - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL:-jdbc:postgresql://postgres:5432/jira_db}
-      - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME:-jira}
-      - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD:-postgres}
-      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
-      - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_CLOUD_CONFIG_FAIL_FAST="false"
-      - SPRING_CLOUD_CONFIG_REQUEST_READ_TIMEOUT=60000
-      - SPRING_CLOUD_CONFIG_REQUEST_CONNECT_TIMEOUT=10000
-      - SPRING_CONFIG_IMPORT=configserver:http://config-server:8888
-      - EUREKA_INSTANCE_HOSTNAME=issue-events
-      - EUREKA_INSTANCE_PREFER_IP_ADDRESS="false"
-      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
-      - EUREKA_CLIENT_ENABLED=true
-      - SPRING_CLOUD_DISCOVERY_ENABLED=true
-    networks:
-      - reporting-network
-    depends_on:
-      config-server:
-        condition: service_healthy
-      eureka-server:
-        condition: service_healthy
-      postgres:
-        condition: service_healthy
-      kafka:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8087/actuator/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 60s
-    restart: unless-stopped
+  #issue-events:
+  #  build:
+  #    context: ./issue-events
+  #    dockerfile: Dockerfile
+  #  container_name: issue-events
+  #  ports:
+  #    - "${ISSUE_EVENTS_PORT:-8087}:8087"
+  #  env_file: .env
+  #  environment:
+  #    - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL:-jdbc:postgresql://postgres:5432/jira_db}
+  #    - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME:-jira}
+  #    - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD:-postgres}
+  #    - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+  #    - SPRING_PROFILES_ACTIVE=docker
+  #    - SPRING_CLOUD_CONFIG_FAIL_FAST="false"
+  #    - SPRING_CLOUD_CONFIG_REQUEST_READ_TIMEOUT=60000
+  #    - SPRING_CLOUD_CONFIG_REQUEST_CONNECT_TIMEOUT=10000
+  #    - SPRING_CONFIG_IMPORT=configserver:http://config-server:8888
+  #    - EUREKA_INSTANCE_HOSTNAME=issue-events
+  #    - EUREKA_INSTANCE_PREFER_IP_ADDRESS="false"
+  #    - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+  #    - EUREKA_CLIENT_ENABLED=true
+  #    - SPRING_CLOUD_DISCOVERY_ENABLED=true
+  #  networks:
+  #    - reporting-network
+  #  depends_on:
+  #    config-server:
+  #      condition: service_healthy
+  #    eureka-server:
+  #      condition: service_healthy
+  #    postgres:
+  #      condition: service_healthy
+  #    kafka:
+  #      condition: service_healthy
+  #  healthcheck:
+  #    test: ["CMD", "curl", "-f", "http://localhost:8087/actuator/health"]
+  #    interval: 10s
+  #    timeout: 5s
+  #    retries: 5
+  #    start_period: 60s
+  #  restart: unless-stopped
+
 
   db-seeder:
     image: postgres:16

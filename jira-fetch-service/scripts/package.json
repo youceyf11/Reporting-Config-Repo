@@ -1,0 +1,16 @@
+{
+  "name": "jira-data-generator",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "axios": "^1.6.0",
+    "@faker-js/faker": "^8.0.2"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "@types/node": "^20.0.0"
+  },
+  "scripts": {
+    "start": "ts-node generate-jira-data.ts"
+  }
+}

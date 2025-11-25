@@ -25,6 +25,10 @@ spring:
           predicates:
               - Path=/api/reports/**
 
+        - id: chart-service
+          uri: lb://chart-service
+          predicates:
+            - Path=/api/charts/**
 eureka:
   client:
     service-url:

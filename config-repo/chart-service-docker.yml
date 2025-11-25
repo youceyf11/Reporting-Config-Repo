@@ -2,21 +2,12 @@ spring:
   application:
     name: chart-service
 
-  mail:
-    host: smtp.gmail.com
-    port: 587
-    username: ${GMAIL_USERNAME:}
-    password: ${GMAIL_PASSWORD:}
-    properties:
-      mail:
-        smtp:
-          auth: true
-          starttls:
-            enable: true
+reporting:
+  service:
+    url: http://reporting-service:8082
 
 server:
   port: 8083
-
 
   eureka:
     client:
@@ -36,9 +27,10 @@ management:
     health:
       show-details: always
 
-reporting:
-  service:
-    base-url: http://reporting-service:8082
 
-mail:
-  enabled: true
+logging:
+  level:
+    org.project.chartservice: DEBUG
+    org.springframework.cloud.config: DEBUG  # Added
+    org.eclipse.jgit: DEBUG  # Added
+    org.springframework.cloud.netflix.eureka: DEBUG  # Added

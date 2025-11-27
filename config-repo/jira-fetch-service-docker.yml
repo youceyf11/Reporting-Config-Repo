@@ -19,7 +19,7 @@ spring:
     bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
   cloud:
     config:
-      fail-fast: true  
+      fail-fast: false
       retry:
         max-attempts: 10
         initial-interval: 5000

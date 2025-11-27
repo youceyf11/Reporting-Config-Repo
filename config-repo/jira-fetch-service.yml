@@ -36,7 +36,7 @@ spring:
 
   cloud:
     config:
-      fail-fast: true  # Enable to surface config issues early
+      fail-fast: false  # Enable to surface config issues early
       retry:
         max-attempts: 10
         initial-interval: 5000

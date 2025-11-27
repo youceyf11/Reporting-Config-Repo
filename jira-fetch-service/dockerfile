@@ -1,5 +1,6 @@
 FROM eclipse-temurin:21-jdk
 WORKDIR /app
+RUN apt-get update && apt-get install -y curl net-tools
 COPY target/jira-fetch-service-0.0.1-SNAPSHOT.jar jira-fetch-service.jar
 EXPOSE 8081
 ENTRYPOINT ["java", "-jar", "jira-fetch-service.jar"]

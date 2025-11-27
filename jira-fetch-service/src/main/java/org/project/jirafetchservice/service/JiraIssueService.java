@@ -16,7 +16,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -360,17 +359,11 @@ public class JiraIssueService {
                     .projectKey(dto.getProjectKey())
                     .assignee(dto.getAssignee())
                     .status(dto.getStatus())
-
-                    // --- Metrics ---
                     .storyPoints(dto.getStoryPoints())
                     .timeSpentSeconds(dto.getTimeSpentSeconds())
                     .originalEstimateSeconds(dto.getOriginalEstimateSeconds())
-                    .resolvedAt(dto.getResolved() != null
-                            ? dto.getResolved().toInstant(ZoneOffset.UTC)
-                            : null)
-                    .updatedAt(dto.getUpdated() != null
-                            ? dto.getUpdated().toInstant(ZoneOffset.UTC)
-                            : null)
+                    .resolvedAt(dto.getResolved() != null ? dto.getResolved().toInstant(java.time.ZoneOffset.UTC) : null)
+                    .updatedAt(dto.getUpdated() != null ? dto.getUpdated().toInstant(java.time.ZoneOffset.UTC) : null)
                     .build();
 
             eventProducer.publish(event);

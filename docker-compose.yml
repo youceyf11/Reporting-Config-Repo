@@ -33,26 +33,25 @@ services:
     restart: unless-stopped
 
   postgres-secondary:
-   image: postgres:15-alpine
-   container_name: phd-postgres-secondary
-   environment:
-    POSTGRES_DB: ${SECOND_POSTGRES_DB:-reporting_db}
-    POSTGRES_USER: ${SECOND_POSTGRES_USER:-reporting}
-    POSTGRES_PASSWORD: ${SECOND_POSTGRES_PASSWORD:-password}
-   ports:
-    - "5433:5432"
-   networks:
-    - reporting-network
-   volumes:
-    - postgres-secondary-data:/var/lib/postgresql/data
-   healthcheck:
-    test: [ "CMD-SHELL", "pg_isready -U reporting" ]
-    interval: 10s
-    timeout: 5s
-    retries: 5
-    start_period: 60s
-   restart: unless-stopped
-
+    image: postgres:15-alpine
+    container_name: phd-postgres-secondary
+    environment:
+      POSTGRES_DB: ${SECOND_POSTGRES_DB:-reporting_db}
+      POSTGRES_USER: ${SECOND_POSTGRES_USER:-reporting}
+      POSTGRES_PASSWORD: ${SECOND_POSTGRES_PASSWORD:-password}
+    ports:
+      - "5433:5432"
+    networks:
+      - reporting-network
+    volumes:
+      - postgres-secondary-data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U reporting" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
 
   zookeeper:
     image: confluentinc/cp-zookeeper:7.5.0
@@ -68,7 +67,7 @@ services:
     networks:
       - reporting-network
     healthcheck:
-      test: [ "CMD-SHELL", "echo srvr | nc localhost 2181 | grep Mode" ]
+      test: ["CMD-SHELL", "nc -z localhost 2181 || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -156,10 +155,17 @@ services:
       SPRING_CLOUD_CONFIG_SERVER_GIT_SEARCH_PATHS: config-repo
       SPRING_CLOUD_CONFIG_SERVER_GIT_CLONE_ON_START: true
       SPRING_CLOUD_CONFIG_SERVER_GIT_FORCE_PULL: true
-      SPRING_CLOUD_CONFIG_SERVER_GIT_TIMEOUT: 300
       SPRING_CLOUD_CONFIG_SERVER_GIT_BASEDIR: /config-repo-cache
+      SPRING_CLOUD_CONFIG_SERVER_GIT_REFRESH_RATE: 0
       LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_CLOUD_CONFIG: DEBUG
-      LOGGING_LEVEL_ORG_ECLIPSE_JGIT: DEBUG
+      LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_CLOUD_CONFIG_SERVER_ENVIRONMENT: DEBUG
+      LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_CLOUD_CONFIG_SERVER_GIT: DEBUG
+      LOGGING_LEVEL_ORG_ECLIPSE_JGIT: INFO
+      SPRING_CLOUD_CONFIG_SERVER_GIT_TIMEOUT: 30
+      SPRING_CLOUD_CONFIG_SERVER_GIT_CLONE_TIMEOUT: 60
+      SPRING_CLOUD_CONFIG_SERVER_GIT_PULL_TIMEOUT: 30
+      SERVER_TOMCAT_CONNECTION_TIMEOUT: 60000
+      SERVER_TOMCAT_THREADS_MAX: 200
     ports:
       - "8888:8888"
     networks:
@@ -168,12 +174,11 @@ services:
       test: [ "CMD-SHELL", "curl -f http://localhost:8888/actuator/health || exit 1" ]
       interval: 10s
       timeout: 10s
-      retries: 10
+      retries: 15
       start_period: 120s
     restart: unless-stopped
     volumes:
       - config-server-git-cache:/config-repo-cache
-
 
   eureka-server:
     build:
@@ -186,15 +191,9 @@ services:
       SPRING_APPLICATION_NAME: eureka-server
       SPRING_CONFIG_IMPORT: configserver:http://config-server:8888
       EUREKA_INSTANCE_HOSTNAME: eureka-server
-      LOGGING_LEVEL_ROOT: DEBUG
-      LOGGING_LEVEL_ORG_SPRINGFRAMEWORK: DEBUG
-      LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_CLOUD_CONFIG: TRACE
+      LOGGING_LEVEL_ROOT: INFO
+      LOGGING_LEVEL_ORG_SPRINGFRAMEWORK: INFO
       SPRING_OUTPUT_ANSI_ENABLED: ALWAYS
-      SPRING_CLOUD_CONFIG_FAIL_FAST: false
-      SPRING_CLOUD_CONFIG_RETRY_MAX_ATTEMPTS: 10
-      SPRING_CLOUD_CONFIG_RETRY_INITIAL_INTERVAL: 5000
-      SPRING_CLOUD_CONFIG_RETRY_MULTIPLIER: 1.5
-      SPRING_CLOUD_CONFIG_RETRY_MAX_INTERVAL: 15000
     ports:
       - "8761:8761"
     networks:
@@ -207,7 +206,7 @@ services:
       interval: 15s
       timeout: 5s
       retries: 10
-      start_period: 90s
+      start_period: 60s
     restart: unless-stopped
 
   api-gateway:
@@ -222,10 +221,6 @@ services:
       EUREKA_INSTANCE_HOSTNAME: api-gateway
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
       SPRING_CONFIG_IMPORT: configserver:http://config-server:8888
-      LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_CLOUD_CONFIG: DEBUG
-      SPRING_CLOUD_CONFIG_FAIL_FAST: "false"
-      SPRING_CLOUD_CONFIG_REQUEST_READ_TIMEOUT: 180000
-      SPRING_CLOUD_CONFIG_REQUEST_CONNECT_TIMEOUT: 10000
     ports:
       - "8080:8080"
     networks:
@@ -253,28 +248,18 @@ services:
       - "${JIRA_FETCH_SERVICE_PORT:-8081}:8081"
     env_file: .env
     environment:
-      - JIRA_BASE_URL=${JIRA_BASE_URL:-http://localhost}
-      - JIRA_USERNAME=${JIRA_USERNAME:-user}
-      - JIRA_API_TOKEN=${JIRA_API_TOKEN:-token}
-      - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL:-jdbc:postgresql://postgres:5432/jira_db}
-      - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME:-jira}
-      - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD:-postgres}
-      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
       - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_CLOUD_CONFIG_FAIL_FAST=true
-      - SPRING_CLOUD_CONFIG_RETRY_MAX_ATTEMPTS=10
-      - SPRING_CLOUD_CONFIG_RETRY_INITIAL_INTERVAL=5000
-      - SPRING_CLOUD_CONFIG_RETRY_MULTIPLIER=1.5
-      - SPRING_CLOUD_CONFIG_RETRY_MAX_INTERVAL=15000
       - SPRING_CONFIG_IMPORT=configserver:http://config-server:8888
-      - EUREKA_INSTANCE_HOSTNAME=jira-fetch-service
-      - EUREKA_INSTANCE_PREFER_IP_ADDRESS=true
-      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
-      - LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_CLOUD_CONFIG=DEBUG
-      - LOGGING_LEVEL_ORG_ECLIPSE_JGIT=DEBUG
       - JIRA_BASE_URL=https://youceyfouriniche.atlassian.net
       - JIRA_USERNAME=Youssef.Ouriniche@emsi-edu.ma
       - JIRA_API_TOKEN=ATATT3xFfGF0qiFqF1w2laI2SAjACCezBZDsars1tLsDyI6Jg4SibhP1XYXdSvZuxcWKL_h__fzQbDOufz-OU7oRvuYcdCeIgmzJINfPI_kIx74qnfgZxUHjl_6FZsePbgAZyRkCvo531zl1gMuFnGFO33T7qv6rwSJqH51CEBv-lXK6YVsVmaM=975D5546
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/jira_db
+      - SPRING_DATASOURCE_USERNAME=jira
+      - SPRING_DATASOURCE_PASSWORD=postgres
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - EUREKA_INSTANCE_HOSTNAME=jira-fetch-service
+      - EUREKA_INSTANCE_PREFER_IP_ADDRESS=true
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
     networks:
       - reporting-network
     depends_on:
@@ -288,7 +273,7 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
-      interval: 10s
+      interval: 15s
       timeout: 5s
       retries: 10
       start_period: 90s
@@ -304,21 +289,13 @@ services:
     env_file: .env
     environment:
       - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_CONFIG_IMPORT=configserver:http://config-server:8888
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-secondary:5432/reporting_db
       - SPRING_DATASOURCE_USERNAME=${SECOND_POSTGRES_USER}
       - SPRING_DATASOURCE_PASSWORD=${SECOND_POSTGRES_PASSWORD}
       - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
-      - SPRING_CLOUD_CONFIG_REQUEST_READ_TIMEOUT=180000
-      - SPRING_CLOUD_CONFIG_REQUEST_CONNECT_TIMEOUT=10000
-      - SPRING_CLOUD_CONFIG_FAIL_FAST=true
-      - SPRING_CLOUD_CONFIG_RETRY_MAX_ATTEMPTS=20
-      - SPRING_CLOUD_CONFIG_RETRY_INITIAL_INTERVAL=3000
-      - SPRING_CLOUD_CONFIG_RETRY_MAX_INTERVAL=5000
-      - SPRING_CONFIG_IMPORT=configserver:http://config-server:8888
       - EUREKA_INSTANCE_HOSTNAME=reporting-service
       - EUREKA_INSTANCE_PREFER_IP_ADDRESS=false
-      - LOGGING_LEVEL_ORG_ECLIPSE_JGIT=DEBUG
-      - LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_CLOUD_CONFIG=DEBUG
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
       - EUREKA_CLIENT_ENABLED=true
       - SPRING_CLOUD_DISCOVERY_ENABLED=true
@@ -343,10 +320,10 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8082/actuator/health"]
-      interval: 10s
+      interval: 15s
       timeout: 5s
-      retries: 30
-      start_period: 180s
+      retries: 15
+      start_period: 90s
     restart: unless-stopped
 
   chart-service:
@@ -358,12 +335,9 @@ services:
       - "${CHART_SERVICE_PORT:-8083}:8083"
     env_file: .env
     environment:
-      - REPORTING_SERVICE_URL=http://reporting-service:8082
       - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_CLOUD_CONFIG_FAIL_FAST=false
-      - SPRING_CLOUD_CONFIG_REQUEST_READ_TIMEOUT=60000
-      - SPRING_CLOUD_CONFIG_REQUEST_CONNECT_TIMEOUT=10000
       - SPRING_CONFIG_IMPORT=configserver:http://config-server:8888
+      - REPORTING_SERVICE_URL=http://reporting-service:8082
       - EUREKA_INSTANCE_HOSTNAME=chart-service
       - EUREKA_INSTANCE_PREFER_IP_ADDRESS=false
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
@@ -380,56 +354,10 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8083/actuator/health"]
-      interval: 10s
+      interval: 15s
       timeout: 5s
-      retries: 5
-      start_period: 60s
-    restart: unless-stopped
-
-  email-service:
-    build:
-      context: ./email-service
-      dockerfile: Dockerfile
-    container_name: email-service
-    ports:
-      - "${EMAIL_SERVICE_PORT:-8084}:8084"
-    env_file: .env
-    environment:
-      - SPRING_RABBITMQ_HOST=${SPRING_RABBITMQ_HOST:-rabbitmq}
-      - SPRING_DATA_REDIS_HOST=${SPRING_DATA_REDIS_HOST:-redis}
-      - SPRING_DATA_REDIS_PORT=${SPRING_DATA_REDIS_PORT:-6379}
-      - GMAIL_USERNAME=${GMAIL_USERNAME:-}
-      - GMAIL_PASSWORD=${GMAIL_PASSWORD:-}
-      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
-      - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_CLOUD_CONFIG_FAIL_FAST="false"
-      - SPRING_CLOUD_CONFIG_REQUEST_READ_TIMEOUT=60000
-      - SPRING_CLOUD_CONFIG_REQUEST_CONNECT_TIMEOUT=10000
-      - SPRING_CONFIG_IMPORT=configserver:http://config-server:8888
-      - EUREKA_INSTANCE_HOSTNAME=email-service
-      - EUREKA_INSTANCE_PREFER_IP_ADDRESS="false"
-      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
-      - EUREKA_CLIENT_ENABLED=true
-      - SPRING_CLOUD_DISCOVERY_ENABLED=true
-    networks:
-      - reporting-network
-    depends_on:
-      config-server:
-        condition: service_healthy
-      eureka-server:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-      kafka:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8084/actuator/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 60s
+      retries: 10
+      start_period: 90s
     restart: unless-stopped
 
   excel-service:
@@ -441,24 +369,15 @@ services:
       - "${EXCEL_SERVICE_PORT:-8085}:8085"
     env_file: .env
     environment:
-      - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL:-jdbc:postgresql://postgres:5432/jira_db}
-      - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME:-jira}
-      - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD:-postgres}
-      - EXCEL_REPORTS_DIR=/data
-      - EXCEL_CHECKPOINT_DIR=/data
-      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
       - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_CLOUD_CONFIG_FAIL_FAST="false"
-      - SPRING_CLOUD_CONFIG_REQUEST_READ_TIMEOUT=60000
-      - SPRING_CLOUD_CONFIG_REQUEST_CONNECT_TIMEOUT=10000
       - SPRING_CONFIG_IMPORT=configserver:http://config-server:8888
+      - JIRA_SERVICE_URL=http://jira-fetch-service:8081
+      - REPORTING_SERVICE_URL=http://reporting-service:8082
       - EUREKA_INSTANCE_HOSTNAME=excel-service
-      - EUREKA_INSTANCE_PREFER_IP_ADDRESS="false"
+      - EUREKA_INSTANCE_PREFER_IP_ADDRESS=false
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
       - EUREKA_CLIENT_ENABLED=true
       - SPRING_CLOUD_DISCOVERY_ENABLED=true
-    volumes:
-      - /Users/youssefouriniche/Desktop/reportsExcel:/data
     networks:
       - reporting-network
     depends_on:
@@ -466,16 +385,12 @@ services:
         condition: service_healthy
       eureka-server:
         condition: service_healthy
-      postgres:
-        condition: service_healthy
-      kafka:
-        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8085/actuator/health"]
-      interval: 10s
+      interval: 15s
       timeout: 5s
-      retries: 5
-      start_period: 60s
+      retries: 10
+      start_period: 90s
     restart: unless-stopped
 
   #issue-events:
@@ -487,17 +402,14 @@ services:
   #    - "${ISSUE_EVENTS_PORT:-8087}:8087"
   #  env_file: .env
   #  environment:
-  #    - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL:-jdbc:postgresql://postgres:5432/jira_db}
-  #    - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME:-jira}
-  #    - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD:-postgres}
-  #    - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
   #    - SPRING_PROFILES_ACTIVE=docker
-  #    - SPRING_CLOUD_CONFIG_FAIL_FAST="false"
-  #    - SPRING_CLOUD_CONFIG_REQUEST_READ_TIMEOUT=60000
-  #    - SPRING_CLOUD_CONFIG_REQUEST_CONNECT_TIMEOUT=10000
-  #    - SPRING_CONFIG_IMPORT=configserver:http://config-server:8888
+  #    - SPRING_CONFIG_IMPORT=optional:configserver:http://config-server:8888
+  #    - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/jira_db
+  #    - SPRING_DATASOURCE_USERNAME=jira
+  #    - SPRING_DATASOURCE_PASSWORD=postgres
+  #    - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
   #    - EUREKA_INSTANCE_HOSTNAME=issue-events
-  #    - EUREKA_INSTANCE_PREFER_IP_ADDRESS="false"
+  #    - EUREKA_INSTANCE_PREFER_IP_ADDRESS=false
   #    - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
   #    - EUREKA_CLIENT_ENABLED=true
   #    - SPRING_CLOUD_DISCOVERY_ENABLED=true
@@ -514,28 +426,8 @@ services:
   #      condition: service_healthy
   #  healthcheck:
   #    test: ["CMD", "curl", "-f", "http://localhost:8087/actuator/health"]
-  #    interval: 10s
+  #    interval: 15s
   #    timeout: 5s
-  #    retries: 5
-  #    start_period: 60s
+  #    retries: 10
+  #    start_period: 90s
   #  restart: unless-stopped
-
-
-  db-seeder:
-    image: postgres:16
-    container_name: db-seeder
-    env_file: .env
-    environment:
-      - PGPASSWORD=${POSTGRES_PASSWORD:-postgres}
-    volumes:
-      - ./reporting-service/src/main/resources/data-test.sql:/seed.sql:ro
-    entrypoint:
-      - "bash"
-      - "-lc"
-      - "until pg_isready -h postgres -U ${POSTGRES_USER:-jira} >/dev/null 2>&1; do sleep 1; done; echo 'Seeding test data...'; psql -h postgres -U ${POSTGRES_USER:-jira} -d ${POSTGRES_DB:-jira_db} -f /seed.sql"
-    networks:
-      - reporting-network
-    depends_on:
-      postgres:
-        condition: service_healthy
-    restart: "no"

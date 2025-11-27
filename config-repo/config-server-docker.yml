@@ -14,6 +14,8 @@ spring:
           force-pull: true
           timeout: 180
           basedir: /config-repo-cache
+          skip-ssl-validation: true  
+          native: true
 logging:
   level:
     root: INFO

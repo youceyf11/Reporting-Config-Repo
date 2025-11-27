@@ -5,9 +5,6 @@ spring:
   profile: default
   application:
     name: excel-service
-  sql:
-    init:
-      mode: always
 
 eureka:
   client:

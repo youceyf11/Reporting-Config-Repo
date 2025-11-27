@@ -29,6 +29,12 @@ spring:
           uri: lb://chart-service
           predicates:
             - Path=/api/charts/**
+
+        - id: excel-service
+          uri: lb://excel-service
+          predicates:
+           - Path=/api/excel/**
+
 eureka:
   client:
     service-url:

@@ -5,8 +5,13 @@ spring:
   config:
     import: "configserver:http://config-server:8888"
 
-  kafka:
-    bootstrap-servers: kafka:9092
+jira:
+  service:
+     url: http://jira-fetch-service:8081
+
+reporting:
+  service:
+    url: http://reporting-service:8082
 
 server:
   port: 8085
@@ -30,36 +35,10 @@ management:
     health:
       show-details: always
 
+
 logging:
   level:
-    org:
-      springframework:
-        cloud:
-          config: DEBUG
-        web:
-          reactive:
-            function:
-              client: DEBUG
-
-    project:
-      excelservice:
-        service: DEBUG
-        controller: DEBUG
-        repository: DEBUG
-        util: DEBUG
-
-    com:
-      netflix:
-        eureka: DEBUG
-
-
-reporting:
-  base-url: ${REPORTING_SERVICE_URL:http://reporting-service:8082}
-
-excel:
-  checkpoint:
-    dir: ${EXCEL_CHECKPOINT_DIR:./checkpoints}
-  file:
-    dir: ${EXCEL_REPORTS_DIR:./reports}
-  reports:
-    dir: ${EXCEL_REPORTS_DIR:./reports}
+    org.project.excelservice: DEBUG
+    org.springframework.cloud.config: DEBUG  # Added
+    org.eclipse.jgit: DEBUG  # Added
+    org.springframework.cloud.netflix.eureka: DEBUG  # Added

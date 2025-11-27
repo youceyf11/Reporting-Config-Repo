@@ -31,6 +31,12 @@ spring:
           predicates:
               - Path=/api/charts/**
 
+        - id: excel-service
+          uri: lb://excel-service
+          predicates:
+            - Path=/api/excel/**
+
+
 resilience4j:
   circuitbreaker:
     instances:

@@ -2,9 +2,6 @@ spring:
   application:
     name: excel-service
 
-  config:
-    import: "configserver:http://config-server:8888"
-
 jira:
   service:
      url: http://jira-fetch-service:8081

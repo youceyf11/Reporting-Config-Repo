@@ -355,17 +355,24 @@ public class JiraIssueService {
 
     private void publishIssueEvent(IssueSimpleDto dto) {
         try {
-            // Ensure types match IssueUpsertedEvent constructor exactly
-            IssueUpsertedEvent event = new IssueUpsertedEvent(
-                    dto.getProjectKey(),                // String projectKey
-                    dto.getIssueKey(),                  // String issueKey
-                    dto.getAssignee(),                  // String assignee
-                    dto.getTimeSpentSeconds(),          // Long timeSpentSeconds
-                    dto.getStoryPoints(),               // Double storyPoints
-                    dto.getResolved() != null           // Instant resolvedAt
+            IssueUpsertedEvent event = IssueUpsertedEvent.builder()
+                    .issueKey(dto.getIssueKey())
+                    .projectKey(dto.getProjectKey())
+                    .assignee(dto.getAssignee())
+                    .status(dto.getStatus())
+
+                    // --- Metrics ---
+                    .storyPoints(dto.getStoryPoints())
+                    .timeSpentSeconds(dto.getTimeSpentSeconds())
+                    .originalEstimateSeconds(dto.getOriginalEstimateSeconds())
+                    .resolvedAt(dto.getResolved() != null
                             ? dto.getResolved().toInstant(ZoneOffset.UTC)
-                            : null
-            );
+                            : null)
+                    .updatedAt(dto.getUpdated() != null
+                            ? dto.getUpdated().toInstant(ZoneOffset.UTC)
+                            : null)
+                    .build();
+
             eventProducer.publish(event);
         } catch (Exception e) {
             logger.error("Kafka publish failed for {}: {}", dto.getIssueKey(), e.getMessage());

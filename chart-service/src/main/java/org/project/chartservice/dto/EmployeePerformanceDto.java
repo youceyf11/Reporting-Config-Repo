@@ -11,7 +11,7 @@ import lombok.Setter;
 @Getter
 @Setter
 public class EmployeePerformanceDto {
-  @JsonProperty("employeeEmail")
+    @JsonProperty("employeeEmail")
   private String employeeEmail;
 
   @JsonProperty("totalHoursWorked")
@@ -30,28 +30,15 @@ public class EmployeePerformanceDto {
     this.expectedHoursThisMonth = expectedHoursThisMonth;
   }
 
-  // Getters and Setters
-  public String getEmployeeEmail() {
-    return employeeEmail;
-  }
-
-  public void setEmployeeEmail(String employeeEmail) {
+    public void setEmployeeEmail(String employeeEmail) {
     this.employeeEmail = employeeEmail;
   }
 
-  public Double getTotalHoursWorked() {
-    return totalHoursWorked;
-  }
-
-  public void setTotalHoursWorked(Double totalHoursWorked) {
+    public void setTotalHoursWorked(Double totalHoursWorked) {
     this.totalHoursWorked = totalHoursWorked;
   }
 
-  public Double getExpectedHoursThisMonth() {
-    return expectedHoursThisMonth;
-  }
-
-  public void setExpectedHoursThisMonth(Double expectedHoursThisMonth) {
+    public void setExpectedHoursThisMonth(Double expectedHoursThisMonth) {
     this.expectedHoursThisMonth = expectedHoursThisMonth;
   }
 }

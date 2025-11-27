@@ -1,153 +1,114 @@
 package org.project.chartservice.service;
 
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.List;
-import java.util.stream.Collectors;
-import org.knowm.xchart.BitmapEncoder;
-import org.knowm.xchart.CategoryChart;
-import org.knowm.xchart.CategoryChartBuilder;
-import org.knowm.xchart.style.Styler;
-import org.project.chartservice.IService.IChartGenerationService;
-import org.project.chartservice.dto.EmployeePerformanceDto;
-import org.project.chartservice.enums.ChartType;
+import org.jfree.chart.ChartFactory;
+import org.jfree.chart.ChartUtils;
+import org.jfree.chart.JFreeChart;
+import org.jfree.chart.plot.CategoryPlot;
+import org.jfree.chart.plot.PlotOrientation;
+import org.jfree.chart.renderer.category.LineAndShapeRenderer;
+import org.jfree.data.category.DefaultCategoryDataset;
+import org.project.chartservice.dto.EmployeeMetricDto;
+import org.project.chartservice.dto.WeeklySummaryDto;
+import org.project.chartservice.util.ChartThemeFactory;
 import org.springframework.stereotype.Service;
-import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
+
+import java.awt.*;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
 
 @Service
-public class ChartGenerationService implements IChartGenerationService {
+public class ChartGenerationService {
 
-  @Override
-  public Mono<byte[]> generateChart(
-      List<EmployeePerformanceDto> employees, ChartType chartType, String projectKey) {
-    return Mono.fromCallable(
-            () -> {
-              switch (chartType) {
-                case WEEKLY_BAR:
-                  return generateWeeklyBarChart(employees, projectKey);
-                case MONTHLY_BAR:
-                  return generateMonthlyBarChart(employees, projectKey);
-                case COMPARATIVE:
-                  return generateComparativeChart(employees, projectKey);
-                default:
-                  throw new IllegalArgumentException("Unsupported chart type: " + chartType);
-              }
-            })
-        .subscribeOn(Schedulers.boundedElastic());
-  }
-
-  private byte[] generateWeeklyBarChart(List<EmployeePerformanceDto> employees, String projectKey)
-      throws IOException {
-    if (employees == null) {
-      throw new IllegalArgumentException("La liste des employés est nulle");
+  /**
+   * Generates a Bar Chart comparing Employee Efficiency for a specific month.
+   */
+  public byte[] generateMonthlyBarChart(List<EmployeeMetricDto> metrics, String period) {
+    // 1. Create Dataset
+    DefaultCategoryDataset dataset = new DefaultCategoryDataset();
+    for (EmployeeMetricDto metric : metrics) {
+      String name = metric.getEmployeeEmail().split("@")[0]; // "alice"
+      dataset.addValue(metric.getEfficiencyScore(), "Efficiency", name);
     }
-    CategoryChart chart =
-        new CategoryChartBuilder()
-            .width(800)
-            .height(600)
-            .title("Weekly Hours Worked - Project: " + projectKey)
-            .xAxisTitle("Week")
-            .yAxisTitle("Hours Worked")
-            .build();
 
-    chart.getStyler().setLegendPosition(Styler.LegendPosition.OutsideE);
-    // chart.getStyler().setAnnotationsVisible(true);
+    // 2. Create Chart
+    JFreeChart chart = ChartFactory.createBarChart(
+            "Monthly Efficiency - " + period, // Chart Title
+            "Employee",                       // X-Axis Label
+            "Efficiency (Points/Hour)",       // Y-Axis Label
+            dataset,
+            PlotOrientation.VERTICAL,
+            false, true, false                // Legend, Tooltips, URLs
+    );
 
-    // Simulate weekly data (in real scenario, you'd get this from the reporting service)
-    List<String> weeks = Arrays.asList("Week 1", "Week 2", "Week 3", "Week 4");
+    // 3. Apply Modern Theme
+    ChartThemeFactory.applyModernTheme(chart);
 
-    employees.forEach(
-        employee -> {
-          // Simulate weekly breakdown (distribute monthly hours across weeks)
-          double totalHours =
-              employee.getTotalHoursWorked() != null ? employee.getTotalHoursWorked() : 0;
-          double[] weeklyHours = {
-            totalHours * 0.25, totalHours * 0.20, totalHours * 0.30, totalHours * 0.25
-          };
-          List<Double> weeklyHoursList =
-              Arrays.stream(weeklyHours).boxed().collect(Collectors.toList());
-
-          chart.addSeries(employee.getEmployeeEmail().split("@")[0], weeks, weeklyHoursList);
-        });
-
-    return chartToByteArray(chart);
+    return toBytes(chart);
   }
 
-  private byte[] generateMonthlyBarChart(List<EmployeePerformanceDto> employees, String projectKey)
-      throws IOException {
-    if (employees == null) {
-      throw new IllegalArgumentException("La liste des employés est nulle");
+  /**
+   * Generates a Line Chart showing Team Velocity over the weeks.
+   */
+  public byte[] generateWeeklyTrendChart(Map<String, WeeklySummaryDto> weeklyData) {
+    // 1. Create Dataset
+    DefaultCategoryDataset dataset = new DefaultCategoryDataset();
+
+    // The Map is already sorted by ReportingService (TreeMap), so we just iterate
+    for (Map.Entry<String, WeeklySummaryDto> entry : weeklyData.entrySet()) {
+      String week = entry.getKey();
+      WeeklySummaryDto summary = entry.getValue();
+
+      // Extract Team Stats
+      if (summary.getTeamStats() != null) {
+        Double totalPoints = summary.getTeamStats().getTotalStoryPoints();
+        // Handle nulls safely
+        double value = (totalPoints != null) ? totalPoints : 0.0;
+
+        // Add to dataset: (Value, Series Name, X-Axis Category)
+        dataset.addValue(value, "Team Velocity", week);
+      }
     }
-    CategoryChart chart =
-        new CategoryChartBuilder()
-            .width(800)
-            .height(600)
-            .title("Monthly Hours Worked - Project: " + projectKey)
-            .xAxisTitle("Employee")
-            .yAxisTitle("Hours Worked")
-            .build();
 
-    chart.getStyler().setLegendPosition(Styler.LegendPosition.InsideNE);
-    // chart.getStyler().setAnnotationsVisible(true);
+    // 2. Create Line Chart
+    JFreeChart chart = ChartFactory.createLineChart(
+            "Weekly Velocity Trend",      // Chart Title
+            "Week",                       // X-Axis Label
+            "Total Story Points",         // Y-Axis Label
+            dataset,
+            PlotOrientation.VERTICAL,
+            true, true, false             // Legend=true to see "Team Velocity" label
+    );
 
-    List<String> employeeNames =
-        employees.stream()
-            .map(emp -> emp.getEmployeeEmail().split("@")[0])
-            .collect(Collectors.toList());
+    // 3. Apply Modern Theme
+    ChartThemeFactory.applyModernTheme(chart);
 
-    List<Double> hoursWorked =
-        employees.stream()
-            .map(emp -> emp.getTotalHoursWorked() != null ? emp.getTotalHoursWorked() : 0)
-            .collect(Collectors.toList());
+    // 4. Specific Tweak for Line Charts: Add "Dots" on the line
+    CategoryPlot plot = chart.getCategoryPlot();
 
-    chart.addSeries("Hours Worked", employeeNames, hoursWorked);
+    // Check if the theme applied a LineAndShapeRenderer, if so, cast it
+    if (plot.getRenderer() instanceof LineAndShapeRenderer) {
+      LineAndShapeRenderer renderer = (LineAndShapeRenderer) plot.getRenderer();
 
-    return chartToByteArray(chart);
-  }
-
-  private byte[] generateComparativeChart(List<EmployeePerformanceDto> employees, String projectKey)
-      throws IOException {
-    if (employees == null) {
-      throw new IllegalArgumentException("La liste des employés est nulle");
+      renderer.setDefaultShapesVisible(true); // Show dots at data points
+      renderer.setDefaultShapesFilled(true);
+      renderer.setSeriesStroke(0, new BasicStroke(3.0f)); // Thicker line
+      renderer.setSeriesPaint(0, ChartThemeFactory.COLOR_PRIMARY); // Blue line
     }
-    CategoryChart chart =
-        new CategoryChartBuilder()
-            .width(900)
-            .height(600)
-            .title("Actual vs Expected Hours - Project: " + projectKey)
-            .xAxisTitle("Employee")
-            .yAxisTitle("Hours")
-            .build();
 
-    chart.getStyler().setLegendPosition(Styler.LegendPosition.InsideNE);
-    // chart.getStyler().setAnnotationsVisible(true);
-
-    List<String> employeeNames =
-        employees.stream()
-            .map(emp -> emp.getEmployeeEmail().split("@")[0])
-            .collect(Collectors.toList());
-
-    List<Double> actualHours =
-        employees.stream()
-            .map(emp -> emp.getTotalHoursWorked() != null ? emp.getTotalHoursWorked() : 0)
-            .collect(Collectors.toList());
-
-    List<Double> expectedHours =
-        employees.stream()
-            .map(
-                emp ->
-                    emp.getExpectedHoursThisMonth() != null ? emp.getExpectedHoursThisMonth() : 0)
-            .collect(Collectors.toList());
-
-    chart.addSeries("Actual Hours", employeeNames, actualHours);
-    chart.addSeries("Expected Hours", employeeNames, expectedHours);
-
-    return chartToByteArray(chart);
+    return toBytes(chart);
   }
-
-  private byte[] chartToByteArray(CategoryChart chart) throws IOException {
-    // Génère le PNG en bytes directement
-    return BitmapEncoder.getBitmapBytes(chart, BitmapEncoder.BitmapFormat.PNG);
+  /**
+   * Helper to convert JFreeChart object to PNG byte array.
+   */
+  private byte[] toBytes(JFreeChart chart) {
+    try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+      // Render the chart as a PNG image with dimensions 800x600
+      ChartUtils.writeChartAsPNG(out, chart, 800, 600);
+      return out.toByteArray();
+    } catch (IOException e) {
+      throw new RuntimeException("Error rendering chart to image", e);
+    }
   }
 }

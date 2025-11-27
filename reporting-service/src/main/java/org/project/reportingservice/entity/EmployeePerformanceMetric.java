@@ -12,6 +12,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.io.Serializable;
 import java.time.LocalDateTime;
 
 @Data
@@ -21,7 +22,9 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "employee_performance_metric",
         uniqueConstraints = @UniqueConstraint(columnNames = {"employee_email", "metric_period"}))
-public class EmployeePerformanceMetric {
+public class EmployeePerformanceMetric implements Serializable {
+
+    private static final long serialVersionUID = 1L;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

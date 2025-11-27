@@ -324,6 +324,8 @@ services:
       - SPRING_CLOUD_DISCOVERY_ENABLED=true
       - SPRING_JPA_HIBERNATE_DDL_AUTO=update
       - SPRING_JPA_SHOW_SQL=true
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_DATA_REDIS_PORT=6379
     networks:
       - reporting-network
     depends_on:
@@ -336,6 +338,8 @@ services:
       kafka:
         condition: service_healthy
       postgres-secondary:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8082/actuator/health"]
@@ -354,17 +358,14 @@ services:
       - "${CHART_SERVICE_PORT:-8083}:8083"
     env_file: .env
     environment:
-      - REPORTING_SERVICE_URL=${REPORTING_SERVICE_URL:-http://reporting-service:8082}
-      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - REPORTING_SERVICE_URL=http://reporting-service:8082
       - SPRING_PROFILES_ACTIVE=docker
-      - GMAIL_USERNAME=${GMAIL_USERNAME:-}
-      - GMAIL_PASSWORD=${GMAIL_PASSWORD:-}
-      - SPRING_CLOUD_CONFIG_FAIL_FAST="false"
+      - SPRING_CLOUD_CONFIG_FAIL_FAST=false
       - SPRING_CLOUD_CONFIG_REQUEST_READ_TIMEOUT=60000
       - SPRING_CLOUD_CONFIG_REQUEST_CONNECT_TIMEOUT=10000
       - SPRING_CONFIG_IMPORT=configserver:http://config-server:8888
       - EUREKA_INSTANCE_HOSTNAME=chart-service
-      - EUREKA_INSTANCE_PREFER_IP_ADDRESS="false"
+      - EUREKA_INSTANCE_PREFER_IP_ADDRESS=false
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
       - EUREKA_CLIENT_ENABLED=true
       - SPRING_CLOUD_DISCOVERY_ENABLED=true
@@ -376,8 +377,6 @@ services:
       eureka-server:
         condition: service_healthy
       reporting-service:
-        condition: service_healthy
-      kafka:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8083/actuator/health"]

@@ -1,19 +1,24 @@
 package org.project.issueevents.events;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
 import java.time.Instant;
 
-import lombok.*;
-
 @Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class IssueUpsertedEvent {
-  private String projectKey;
   private String issueKey;
+  private String projectKey;
   private String assignee;
-  private Long timeSpentSeconds;
+  private String status;
   private Double storyPoints;
+  private Long timeSpentSeconds;
+  private Long originalEstimateSeconds;
   private Instant resolvedAt;
-
-
+  private Instant updatedAt;
 }

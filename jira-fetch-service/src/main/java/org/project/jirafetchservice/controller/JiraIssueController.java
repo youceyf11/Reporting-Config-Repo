@@ -66,7 +66,7 @@ public class JiraIssueController {
   @GetMapping("/projects/{projectKey}/issues")
   public List<IssueSimpleDto> getProjectIssues(
           @PathVariable @NotBlank String projectKey,
-          @RequestParam(defaultValue = "50") @Positive @Max(100) Integer limit) {
+          @RequestParam(defaultValue = "50") @Positive @Max(1000) Integer limit) {
     List<JiraIssueApiResponse> issues = jiraIssueService.getProjectIssues(projectKey);
     return issues.stream()
             .map(jiraMapper::toSimpleDtoFromApi)

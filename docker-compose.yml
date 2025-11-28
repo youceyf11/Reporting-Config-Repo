@@ -347,6 +347,7 @@ services:
       - SPRING_CLOUD_DISCOVERY_ENABLED=true
       - SPRING_RABBITMQ_HOST=rabbitmq
       - SPRING_RABBITMQ_PORT=5672
+      - REPORT_RECIPIENT=${REPORT_RECIPIENT_EMAIL}
     networks:
       - reporting-network
     depends_on:
@@ -386,6 +387,11 @@ services:
       - SPRING_CLOUD_DISCOVERY_ENABLED=true
       - SPRING_RABBITMQ_HOST=rabbitmq
       - SPRING_RABBITMQ_PORT=5672
+      - REPORT_RECIPIENT=${REPORT_RECIPIENT_EMAIL}
+      - SPRING_AI_OPENAI_API_KEY=${OPENAI_API_KEY}
+      - SPRING_AI_OPENAI_BASE_URL=https://api.groq.com/openai
+      - SPRING_AI_OPENAI_CHAT_OPTIONS_MODEL=llama-3.1-8b-instant
+      - JAVA_TOOL_OPTIONS=-Dspring.cloud.config.fail-fast=false -Dspring.config.import=configserver:http://config-server:8888 -Deureka.client.serviceUrl.defaultZone=http://eureka-server:8761/eureka/ -Dspring.ai.openai.connection-timeout=60s -Dspring.ai.openai.read-timeout=120s
     networks:
       - reporting-network
     depends_on:

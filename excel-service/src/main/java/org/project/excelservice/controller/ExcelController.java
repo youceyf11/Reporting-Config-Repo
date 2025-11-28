@@ -1,7 +1,11 @@
 package org.project.excelservice.controller;
 
+import lombok.RequiredArgsConstructor;
+import org.project.excelservice.client.ServiceClient;
 import org.project.excelservice.config.RabbitConfig;
 import org.project.excelservice.dto.EmailRequestDto;
+import org.project.excelservice.dto.ReportingDataDto;
+import org.project.excelservice.service.AiAnalysisService;
 import org.project.excelservice.service.ExcelGenerationService;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.core.io.ByteArrayResource;
@@ -11,18 +15,17 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/excel")
+@RequiredArgsConstructor
 public class ExcelController {
 
     private final ExcelGenerationService excelService;
     private final RabbitTemplate rabbitTemplate;
-
-    public ExcelController(ExcelGenerationService excelService, RabbitTemplate rabbitTemplate) {
-        this.excelService = excelService;
-        this.rabbitTemplate = rabbitTemplate;
-    }
+    private final AiAnalysisService aiService;
+    private final ServiceClient serviceClient;
 
     // 1. Download Raw Data (Updates)
     @GetMapping("/raw/{projectKey}")
@@ -59,7 +62,7 @@ public class ExcelController {
         String filename = "Raw_Data_" + projectKey + ".xlsx";
 
         // 2. Send to Queue
-        sendToQueue(email, "Raw Data Report: " + projectKey, filename, fileContent);
+        sendToQueue(email, "Raw Data Report: " + projectKey, filename, fileContent, "Please find the raw data report attached.");
 
         return ResponseEntity.ok("Raw data report queued for email to " + email);
     }
@@ -70,22 +73,66 @@ public class ExcelController {
             @RequestParam String endDate,
             @RequestParam String email) throws IOException {
 
-        // 1. Generate File
+        // A. Fetch Data for AI
+        Map<String, ReportingDataDto> reportData = serviceClient.getWeeklyReport(startDate, endDate);
+
+        // B. Generate AI Summary
+        String aiSummary = "";
+        if (!reportData.isEmpty()) {
+            ReportingDataDto weekData = reportData.values().iterator().next();
+            aiSummary = aiService.generateExecutiveSummary(weekData);
+        }
+
+        // C. Generate Excel
         byte[] fileContent = excelService.generateMetricsReport(startDate, endDate);
-        String filename = "Weekly_Metrics_" + startDate + "_to_" + endDate + ".xlsx";
+        String filename = "Weekly_Metrics_" + startDate + ".xlsx";
 
-        // 2. Send to Queue
-        sendToQueue(email, "Weekly Metrics Report", filename, fileContent);
+        // D. Build Email Body
+        String emailBody = String.format("""
+                <html>
+                <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                    <h2 style="color: #2c3e50;">Weekly Performance Report</h2>
+                    <p><b>Period:</b> %s to %s</p>
+                    <hr style="border: 0; border-top: 1px solid #eee;"/>
+                    
+                    <h3 style="color: #2c3e50;">AI Executive Analysis</h3>
+                    <div style="background-color: #f9f9f9; padding: 15px; border-left: 4px solid #007bff; white-space: pre-wrap; font-family: inherit;">%s</div>
+                    
+                    <hr style="border: 0; border-top: 1px solid #eee;"/>
+                    <p>Please find the detailed Excel metrics attached.</p>
+                </body>
+                </html>
+                """, startDate, endDate, aiSummary);
 
-        return ResponseEntity.ok("Metrics report queued for email to " + email);
+        // E. Send
+        sendToQueue(email, "Weekly AI Report", filename, fileContent, emailBody);
+
+        return ResponseEntity.ok("AI Metrics report queued for email to " + email);
     }
 
-    private void sendToQueue(String to, String subject, String filename, byte[] fileContent) {
+    @GetMapping("/ai/test")
+    public ResponseEntity<String> testAiGeneration(
+            @RequestParam String startDate,
+            @RequestParam String endDate) {
+
+        Map<String, ReportingDataDto> reportData = serviceClient.getWeeklyReport(startDate, endDate);
+
+        if (reportData.isEmpty()) {
+            return ResponseEntity.ok("No data found to analyze.");
+        }
+
+        ReportingDataDto weekData = reportData.values().iterator().next();
+        String summary = aiService.generateExecutiveSummary(weekData);
+
+        return ResponseEntity.ok(summary);
+    }
+
+    private void sendToQueue(String to, String subject, String filename, byte[] fileContent, String body) {
         EmailRequestDto emailRequest = EmailRequestDto.builder()
                 .to(to)
                 .subject(subject)
-                .body("Please find the requested Excel report attached.")
-                .attachmentName(filename) // Extension .xlsx tells email client it's Excel
+                .body(body)
+                .attachmentName(filename)
                 .attachmentData(fileContent)
                 .build();
 

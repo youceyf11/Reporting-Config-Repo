@@ -35,6 +35,11 @@ spring:
           predicates:
            - Path=/api/excel/**
 
+        - id: email-service
+          uri: lb://email-service
+          predicates:
+            - Path=/api/email/**
+
 eureka:
   client:
     service-url:

@@ -36,7 +36,11 @@ spring:
           predicates:
             - Path=/api/excel/**
 
-
+        - id: email-service
+          uri: lb://email-service
+          predicates:
+            - Path=/api/email/**
+            
 resilience4j:
   circuitbreaker:
     instances:

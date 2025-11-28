@@ -40,6 +40,7 @@ public class EmployeePerformanceMetric implements Serializable {
     private Double totalStoryPoints; // Velocity
     private Integer totalTicketsClosed;
 
+    private Double totalEstimatedHours;
     // --- 2. Efficiency ---
     private Double totalHoursLogged;
     private Double efficiencyScore; // Points per Hour

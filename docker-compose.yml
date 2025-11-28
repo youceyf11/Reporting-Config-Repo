@@ -345,6 +345,8 @@ services:
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
       - EUREKA_CLIENT_ENABLED=true
       - SPRING_CLOUD_DISCOVERY_ENABLED=true
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - SPRING_RABBITMQ_PORT=5672
     networks:
       - reporting-network
     depends_on:
@@ -353,6 +355,8 @@ services:
       eureka-server:
         condition: service_healthy
       reporting-service:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8083/actuator/health"]
@@ -380,12 +384,16 @@ services:
       - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
       - EUREKA_CLIENT_ENABLED=true
       - SPRING_CLOUD_DISCOVERY_ENABLED=true
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - SPRING_RABBITMQ_PORT=5672
     networks:
       - reporting-network
     depends_on:
       config-server:
         condition: service_healthy
       eureka-server:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8085/actuator/health"]
@@ -395,41 +403,38 @@ services:
       start_period: 90s
     restart: unless-stopped
 
-  #issue-events:
-  #  build:
-  #    context: ./issue-events
-  #    dockerfile: Dockerfile
-  #  container_name: issue-events
-  #  ports:
-  #    - "${ISSUE_EVENTS_PORT:-8087}:8087"
-  #  env_file: .env
-  #  environment:
-  #    - SPRING_PROFILES_ACTIVE=docker
-  #    - SPRING_CONFIG_IMPORT=optional:configserver:http://config-server:8888
-  #    - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/jira_db
-  #    - SPRING_DATASOURCE_USERNAME=jira
-  #    - SPRING_DATASOURCE_PASSWORD=postgres
-  #    - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
-  #    - EUREKA_INSTANCE_HOSTNAME=issue-events
-  #    - EUREKA_INSTANCE_PREFER_IP_ADDRESS=false
-  #    - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
-  #    - EUREKA_CLIENT_ENABLED=true
-  #    - SPRING_CLOUD_DISCOVERY_ENABLED=true
-  #  networks:
-  #    - reporting-network
-  #  depends_on:
-  #    config-server:
-  #      condition: service_healthy
-  #    eureka-server:
-  #      condition: service_healthy
-  #    postgres:
-  #      condition: service_healthy
-  #    kafka:
-  #      condition: service_healthy
-  #  healthcheck:
-  #    test: ["CMD", "curl", "-f", "http://localhost:8087/actuator/health"]
-  #    interval: 15s
-  #    timeout: 5s
-  #    retries: 10
-  #    start_period: 90s
-  #  restart: unless-stopped
+
+  email-service:
+    build:
+      context: ./email-service
+      dockerfile: Dockerfile
+    container_name: email-service
+    ports:
+      - "${EMAIL_SERVICE_PORT:-8084}:8084"
+    env_file: .env
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_CONFIG_IMPORT=configserver:http://config-server:8888
+      - SPRING_CLOUD_CONFIG_REQUEST_READ_TIMEOUT=300000
+      - SPRING_CLOUD_CONFIG_REQUEST_CONNECT_TIMEOUT=30000
+
+      - SPRING_RABBITMQ_HOST=rabbitmq
+      - SPRING_RABBITMQ_PORT=5672
+      - GMAIL_USERNAME=${GMAIL_USERNAME:-}
+      - GMAIL_PASSWORD=${GMAIL_PASSWORD:-}
+    networks:
+      - reporting-network
+    depends_on:
+      config-server:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8084/actuator/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped

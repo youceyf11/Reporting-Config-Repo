@@ -7,6 +7,7 @@ public class WeeklyStatsDto {
     private Double totalStoryPoints;
     private Integer totalTicketsClosed;
     private Double totalHoursLogged;
+    private Double totalEstimatedHours;
     private Double efficiencyScore;
     private Double estimationAccuracy;
 }

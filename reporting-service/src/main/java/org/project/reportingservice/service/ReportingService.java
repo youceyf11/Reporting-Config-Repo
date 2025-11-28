@@ -101,10 +101,14 @@ public class ReportingService {
         int totalTickets = individuals.stream().mapToInt(m -> m.getTotalTicketsClosed() != null ? m.getTotalTicketsClosed() : 0).sum();
         double totalHours = individuals.stream().mapToDouble(m -> m.getTotalHoursLogged() != null ? m.getTotalHoursLogged() : 0).sum();
 
-        // Recalculate Efficiency for Team
+        // --- NEW AGGREGATION ---
+        double totalEstimatedHours = individuals.stream()
+                .mapToDouble(m -> m.getTotalEstimatedHours() != null ? m.getTotalEstimatedHours() : 0.0)
+                .sum();
+        // -----------------------
+
         double teamEfficiency = (totalHours > 0) ? (totalPoints / totalHours) : 0.0;
 
-        // Average Accuracy across team members
         double avgAccuracy = individuals.stream()
                 .mapToDouble(m -> m.getEstimationAccuracy() != null ? m.getEstimationAccuracy() : 0)
                 .average().orElse(0.0);
@@ -113,6 +117,7 @@ public class ReportingService {
                 .totalStoryPoints(totalPoints)
                 .totalTicketsClosed(totalTickets)
                 .totalHoursLogged(totalHours)
+                .totalEstimatedHours(totalEstimatedHours)
                 .efficiencyScore(teamEfficiency)
                 .estimationAccuracy(avgAccuracy)
                 .build();
@@ -178,6 +183,7 @@ public class ReportingService {
                 .sum();
 
         double hours = totalSeconds / 3600.0;
+        double estimatedHours = totalEstimatedSeconds / 3600.0;
 
         // Efficiency: Points / Hour
         double efficiency = (hours > 0) ? (points / hours) : 0.0;
@@ -191,6 +197,7 @@ public class ReportingService {
                 .totalStoryPoints(points)
                 .totalTicketsClosed(count)
                 .totalHoursLogged(hours)
+                .totalEstimatedHours(estimatedHours)
                 .efficiencyScore(efficiency)
                 .estimationAccuracy(accuracy)
                 .build();

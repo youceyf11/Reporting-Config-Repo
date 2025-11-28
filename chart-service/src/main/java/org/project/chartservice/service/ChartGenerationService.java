@@ -21,90 +21,111 @@ import java.util.Map;
 @Service
 public class ChartGenerationService {
 
-  /**
-   * Generates a Bar Chart comparing Employee Efficiency for a specific month.
-   */
+  // =========================================================
+  // 1. MONTHLY BAR CHART (Employee Efficiency Comparison)
+  // =========================================================
   public byte[] generateMonthlyBarChart(List<EmployeeMetricDto> metrics, String period) {
-    // 1. Create Dataset
     DefaultCategoryDataset dataset = new DefaultCategoryDataset();
     for (EmployeeMetricDto metric : metrics) {
-      String name = metric.getEmployeeEmail().split("@")[0]; // "alice"
+      String name = metric.getEmployeeEmail().split("@")[0];
       dataset.addValue(metric.getEfficiencyScore(), "Efficiency", name);
     }
 
-    // 2. Create Chart
     JFreeChart chart = ChartFactory.createBarChart(
-            "Monthly Efficiency - " + period, // Chart Title
-            "Employee",                       // X-Axis Label
-            "Efficiency (Points/Hour)",       // Y-Axis Label
+            "Monthly Efficiency - " + period,
+            "Employee",
+            "Efficiency (Points/Hour)",
             dataset,
             PlotOrientation.VERTICAL,
-            false, true, false                // Legend, Tooltips, URLs
+            false, true, false
     );
 
-    // 3. Apply Modern Theme
     ChartThemeFactory.applyModernTheme(chart);
-
     return toBytes(chart);
   }
 
-  /**
-   * Generates a Line Chart showing Team Velocity over the weeks.
-   */
+  // =========================================================
+  // 2. WEEKLY TREND CHART (Line Chart - Team Velocity)
+  // =========================================================
   public byte[] generateWeeklyTrendChart(Map<String, WeeklySummaryDto> weeklyData) {
-    // 1. Create Dataset
     DefaultCategoryDataset dataset = new DefaultCategoryDataset();
 
-    // The Map is already sorted by ReportingService (TreeMap), so we just iterate
     for (Map.Entry<String, WeeklySummaryDto> entry : weeklyData.entrySet()) {
       String week = entry.getKey();
       WeeklySummaryDto summary = entry.getValue();
 
-      // Extract Team Stats
       if (summary.getTeamStats() != null) {
         Double totalPoints = summary.getTeamStats().getTotalStoryPoints();
-        // Handle nulls safely
         double value = (totalPoints != null) ? totalPoints : 0.0;
-
-        // Add to dataset: (Value, Series Name, X-Axis Category)
         dataset.addValue(value, "Team Velocity", week);
       }
     }
 
-    // 2. Create Line Chart
     JFreeChart chart = ChartFactory.createLineChart(
-            "Weekly Velocity Trend",      // Chart Title
-            "Week",                       // X-Axis Label
-            "Total Story Points",         // Y-Axis Label
+            "Weekly Velocity Trend",
+            "Week",
+            "Total Story Points",
             dataset,
             PlotOrientation.VERTICAL,
-            true, true, false             // Legend=true to see "Team Velocity" label
+            true, true, false
     );
 
-    // 3. Apply Modern Theme
     ChartThemeFactory.applyModernTheme(chart);
 
-    // 4. Specific Tweak for Line Charts: Add "Dots" on the line
+    // Specific Tweak: Add dots to the line
     CategoryPlot plot = chart.getCategoryPlot();
-
-    // Check if the theme applied a LineAndShapeRenderer, if so, cast it
     if (plot.getRenderer() instanceof LineAndShapeRenderer) {
       LineAndShapeRenderer renderer = (LineAndShapeRenderer) plot.getRenderer();
-
-      renderer.setDefaultShapesVisible(true); // Show dots at data points
+      renderer.setDefaultShapesVisible(true);
       renderer.setDefaultShapesFilled(true);
-      renderer.setSeriesStroke(0, new BasicStroke(3.0f)); // Thicker line
-      renderer.setSeriesPaint(0, ChartThemeFactory.COLOR_PRIMARY); // Blue line
+      renderer.setSeriesStroke(0, new BasicStroke(3.0f));
+      renderer.setSeriesPaint(0, ChartThemeFactory.COLOR_PRIMARY);
     }
 
     return toBytes(chart);
   }
-  /**
-   * Helper to convert JFreeChart object to PNG byte array.
-   */
+
+  // =========================================================
+  // 3. COMPARATIVE CHART (Grouped Bar - Planned vs Actual)
+  // =========================================================
+  public byte[] generateComparativeChart(Map<String, WeeklySummaryDto> weeklyData) {
+    DefaultCategoryDataset dataset = new DefaultCategoryDataset();
+
+    for (Map.Entry<String, WeeklySummaryDto> entry : weeklyData.entrySet()) {
+      String week = entry.getKey();
+      WeeklySummaryDto summary = entry.getValue();
+
+      if (summary.getTeamStats() != null) {
+        // Bar 1: Actual Hours
+        Double actualObj = summary.getTeamStats().getTotalHoursLogged();
+        double actual = (actualObj != null) ? actualObj : 0.0;
+        dataset.addValue(actual, "Actual Hours", week);
+
+        // Bar 2: Estimated Hours
+        Double estObj = summary.getTeamStats().getTotalEstimatedHours();
+        double estimated = (estObj != null) ? estObj : 0.0;
+        dataset.addValue(estimated, "Estimated Hours", week);
+      }
+    }
+
+    JFreeChart chart = ChartFactory.createBarChart(
+            "Planned vs Actual Effort (Team)",
+            "Week",
+            "Hours",
+            dataset,
+            PlotOrientation.VERTICAL,
+            true, true, false
+    );
+
+    ChartThemeFactory.applyModernTheme(chart);
+    return toBytes(chart);
+  }
+
+  // =========================================================
+  // HELPER
+  // =========================================================
   private byte[] toBytes(JFreeChart chart) {
     try (ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-      // Render the chart as a PNG image with dimensions 800x600
       ChartUtils.writeChartAsPNG(out, chart, 800, 600);
       return out.toByteArray();
     } catch (IOException e) {

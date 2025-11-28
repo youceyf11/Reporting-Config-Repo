@@ -17,6 +17,7 @@ public class WeeklyStatsDto implements Serializable {
 
     // 2. Effort
     private Double totalHoursLogged;
+    private Double totalEstimatedHours; // <--- Required
 
     // 3. Performance (Derived)
     private Double efficiencyScore;       // Points per Hour

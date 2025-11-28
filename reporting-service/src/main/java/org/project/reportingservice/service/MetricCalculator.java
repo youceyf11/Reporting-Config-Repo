@@ -28,17 +28,23 @@ public class MetricCalculator {
                 totalSeconds += issue.getTimeSpentSeconds();
             }
 
+            // Estimate Logic: Sum all original estimates
             if (issue.getOriginalEstimateSeconds() != null) {
                 totalOriginalEstimate += issue.getOriginalEstimateSeconds();
             }
         }
 
+        // Convert Seconds to Hours
         double totalHours = totalSeconds / 3600.0;
+
+        // --- NEW CALCULATION ---
+        double totalEstimatedHours = totalOriginalEstimate / 3600.0;
+        // -----------------------
 
         // Efficiency: Points / Hour
         double efficiency = (totalHours > 0) ? (totalPoints / totalHours) : 0.0;
 
-        // Accuracy: (Actual / Estimated) * 100. Ideally 100%.
+        // Accuracy: (Actual / Estimated) * 100
         double accuracy = (totalOriginalEstimate > 0) ?
                 ((double) totalSeconds / totalOriginalEstimate) * 100.0 : 0.0;
 
@@ -48,6 +54,7 @@ public class MetricCalculator {
                 .totalStoryPoints(totalPoints)
                 .totalTicketsClosed(closedCount)
                 .totalHoursLogged(totalHours)
+                .totalEstimatedHours(totalEstimatedHours) // <--- Set the new field
                 .efficiencyScore(efficiency)
                 .estimationAccuracy(accuracy)
                 .lastCalculated(LocalDateTime.now())

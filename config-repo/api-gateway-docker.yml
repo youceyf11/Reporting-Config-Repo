@@ -20,25 +20,22 @@ spring:
                 name: jiraServiceCircuitBreaker
                 fallbackUri: forward:/fallback/jira
 
-        - id: reporting-service
-          uri: lb://reporting-service
+        - id: user-service
+          uri: lb://user-service
           predicates:
-              - Path=/api/reports/**
+              - Path=/api/users/**
 
-        - id: chart-service
-          uri: lb://chart-service
+        - id: trajet-service
+          uri: lb://trajet-service
           predicates:
-            - Path=/api/charts/**
+            - Path=/api/trajets/**
+            - Path=/api/reservations/**
 
-        - id: excel-service
-          uri: lb://excel-service
+        - id: geo-service
+          uri: lb://geo-service
           predicates:
-           - Path=/api/excel/**
+           - Path=/api/geo/**
 
-        - id: email-service
-          uri: lb://email-service
-          predicates:
-            - Path=/api/email/**
 
 eureka:
   client:

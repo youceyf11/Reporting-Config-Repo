@@ -1,13 +1,10 @@
 spring:
   application:
-    name: chart-service
+    name: user-service
 
-reporting:
-  service:
-    url: http://reporting-service:8082
 
 server:
-  port: 8083
+  port: 8081
 
   eureka:
     client:
@@ -30,7 +27,7 @@ management:
 
 logging:
   level:
-    org.project.chartservice: DEBUG
+    org.project.userservice: DEBUG
     org.springframework.cloud.config: DEBUG  # Added
     org.eclipse.jgit: DEBUG  # Added
     org.springframework.cloud.netflix.eureka: DEBUG  # Added

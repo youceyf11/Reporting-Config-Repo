@@ -3,18 +3,18 @@ server:
 
 spring:
   application:
-    name: jira-fetch-service
+    name: user-service
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/jira_db
-    username: jira
+    url: jdbc:postgresql://localhost:5432/user_db
+    username: user
     password: postgres
     driver-class-name: org.postgresql.Driver
 
   autoconfigure:
     exclude:
       - org.springframework.boot.autoconfigure.r2dbc.R2dbcAutoConfiguration
-        
+
   jpa:
     hibernate:
       ddl-auto: update
@@ -62,7 +62,7 @@ management:
 
 logging:
   level:
-    org.project.jirafetchservice: DEBUG
+    org.project.userservice: DEBUG
     org.springframework.kafka: INFO
     org.hibernate.SQL: DEBUG
     org.springframework.cloud.config: DEBUG  # Added for config debugging

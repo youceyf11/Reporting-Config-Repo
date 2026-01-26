@@ -1,0 +1,33 @@
+spring:
+  application:
+    name: geo-service
+
+
+server:
+  port: 8083
+
+  eureka:
+    client:
+      service-url:
+        defaultZone: http://eureka-server:8761/eureka/
+      register-with-eureka: true
+      fetch-registry: true
+    instance:
+      prefer-ip-address: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,eureka
+  endpoint:
+    health:
+      show-details: always
+
+
+logging:
+  level:
+    org.project.geoservice: DEBUG
+    org.springframework.cloud.config: DEBUG  # Added
+    org.eclipse.jgit: DEBUG  # Added
+    org.springframework.cloud.netflix.eureka: DEBUG  # Added

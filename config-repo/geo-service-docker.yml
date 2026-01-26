@@ -15,6 +15,13 @@ server:
     instance:
       prefer-ip-address: true
 
+nominatim:
+  url: https://nominatim.openstreetmap.org
+  email: youceyfouriniche11@gmail.com
+
+osrm:
+  url: http://router.project-osrm.org
+
 management:
   endpoints:
     web:

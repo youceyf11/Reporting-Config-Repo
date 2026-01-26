@@ -50,6 +50,13 @@ eureka:
   instance:
     hostname: localhost
 
+nominatim:
+  url: https://nominatim.openstreetmap.org
+  email: youceyfouriniche11@gmail.com
+
+osrm:
+  url: http://router.project-osrm.org
+
 management:
   endpoints:
     web:

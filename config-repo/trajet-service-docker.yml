@@ -23,6 +23,10 @@ management:
     health:
       show-details: always
 
+jwt:
+  secret: 0066238a010313091a509d03b52715040a0ed3dc456e0be91c3063e9c6e7cdeb3ed7c5f27e601681072576211f93c5363bfc846db11015264800207c79b587a9
+  expiration: 86400000
+
 
 logging:
   level:

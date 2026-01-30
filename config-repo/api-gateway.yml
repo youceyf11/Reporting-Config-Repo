@@ -4,51 +4,48 @@ server:
 spring:
   application:
     name: api-gateway
-  cloud:
     gateway:
       discovery:
         locator:
           enabled: true
           lower-case-service-id: true
       routes:
-        - id: eureka-server
-          uri: http://localhost:8761
-          predicates:
-            - Path=/eureka/**
-
         - id: jira-fetch-service
           uri: lb://jira-fetch-service
           predicates:
-              - Path=/api/jira/**
+            - Path=/api/jira/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: jiraServiceCircuitBreaker
+                fallbackUri: forward:/fallback/jira
 
-        - id: reporting-service
-          uri: lb://reporting-service
+        - id: user-service
+          uri: lb://user-service
           predicates:
-            - Path=/api/reports/**
+            - Path=/api/users/**
 
-        - id: chart-service
-          uri: lb://chart-service
+        - id: trajet-service
+          uri: lb://trajet-service
           predicates:
-              - Path=/api/charts/**
+            - Path=/api/trajets/**
+            - Path=/api/reservations/**
 
-        - id: excel-service
-          uri: lb://excel-service
+        - id: geo-service
+          uri: lb://geo-service
           predicates:
-            - Path=/api/excel/**
+            - Path=/api/geo/**
 
-        - id: email-service
-          uri: lb://email-service
+        - id: payment-service
+          uri: lb://payment-service
           predicates:
-            - Path=/api/email/**
-            
-resilience4j:
-  circuitbreaker:
-    instances:
-      userServiceCircuitBreaker:
-        sliding-window-size: 10
-        failure-rate-threshold: 50
-        wait-duration-in-open-state: 10000
-        permitted-number-of-calls-in-half-open-state: 3
+            - Path=/api/payments/**
+
+        - id: notification-service
+          uri: lb://notification-service
+          predicates:
+            - Path=/api/notifications/**
+
 
 eureka:
   client:
@@ -58,5 +55,27 @@ eureka:
     fetch-registry: true
   instance:
     prefer-ip-address: true
-    hostname: api-gateway
-    instance-id: ${spring.application.name}:${random.value}
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      userServiceCircuitBreaker:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+        permitted-number-of-calls-in-half-open-state: 3
+
+      jiraServiceCircuitBreaker:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+        permitted-number-of-calls-in-half-open-state: 3
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway
+  endpoint:
+    health:
+      show-details: always

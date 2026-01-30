@@ -1,6 +1,13 @@
 spring:
   application:
     name: trajet-service
+    cloud:
+      openfeign:
+        client:
+          config:
+            default:
+              connectTimeout: 5000
+              readTimeout: 5000
 
 server:
   port: 8082
@@ -30,9 +37,13 @@ jwt:
 user-service:
   url: http://user-service:8081/api/users
 
+notification-service:
+  url: http://notification-service:8085/api/notifications
+
 logging:
   level:
     org.project.trajetservice: DEBUG
     org.springframework.cloud.config: DEBUG  # Added
     org.eclipse.jgit: DEBUG  # Added
     org.springframework.cloud.netflix.eureka: DEBUG  # Added
+

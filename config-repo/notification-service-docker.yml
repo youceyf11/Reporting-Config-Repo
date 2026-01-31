@@ -21,6 +21,13 @@ spring:
           auth: true
           starttls:
             enable: true
+            required: true
+  thymeleaf:
+    prefix: classpath:/templates/
+    suffix: .html
+    mode: HTML
+    encoding: UTF-8
+    cache: false
 
 eureka:
   client:
@@ -29,5 +36,8 @@ eureka:
   instance:
     prefer-ip-address: true
 
-
-
+logging:
+  level:
+    com.devbuild.notificationservice: DEBUG
+    org.springframework.mail: DEBUG
+    org.thymeleaf: DEBUG

@@ -38,7 +38,7 @@ user-service:
   url: http://user-service:8081/api/users
 
 notification-service:
-  url: http://notification-service:8085/api/notifications
+  url: http://notification-service:8085
 
 logging:
   level:

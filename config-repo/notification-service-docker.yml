@@ -4,17 +4,21 @@ server:
 spring:
   application:
     name: notification-service
+
+  # Database settings...
   jpa:
     hibernate:
       ddl-auto: update
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  # EMAIL SETTINGS
   mail:
     host: smtp.gmail.com
     port: 587
-    username: ${GMAIL_USERNAME}
-    password: ${GMAIL_PASSWORD}
+    username: youceyfouriniche11@gmail.com
+    password: sqog pajx jlad uuiz # Ensure no extra spaces at start/end
     properties:
       mail:
         smtp:
@@ -22,11 +26,17 @@ spring:
           starttls:
             enable: true
             required: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+
+  # THYMELEAF SETTINGS (Crucial for finding templates)
   thymeleaf:
     prefix: classpath:/templates/
     suffix: .html
     mode: HTML
     encoding: UTF-8
+    check-template-location: true
     cache: false
 
 eureka:
@@ -39,5 +49,5 @@ eureka:
 logging:
   level:
     com.devbuild.notificationservice: DEBUG
-    org.springframework.mail: DEBUG
-    org.thymeleaf: DEBUG
+    org.springframework.mail: DEBUG  # Enable debug for SMTP
+    org.thymeleaf: DEBUG             # Enable debug for Templates

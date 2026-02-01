@@ -4,6 +4,7 @@ server:
 spring:
   application:
     name: api-gateway
+  cloud:  # ADDED: cloud level
     gateway:
       discovery:
         locator:
@@ -23,7 +24,7 @@ spring:
         - id: user-service
           uri: lb://user-service
           predicates:
-              - Path=/api/users/**
+            - Path=/api/users/**
 
         - id: trajet-service
           uri: lb://trajet-service
@@ -34,7 +35,7 @@ spring:
         - id: geo-service
           uri: lb://geo-service
           predicates:
-           - Path=/api/geo/**
+            - Path=/api/geo/**
 
         - id: payment-service
           uri: lb://payment-service
@@ -45,7 +46,6 @@ spring:
           uri: lb://notification-service
           predicates:
             - Path=/api/notifications/**
-
 
 eureka:
   client:

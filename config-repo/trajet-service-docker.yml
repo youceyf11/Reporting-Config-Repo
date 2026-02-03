@@ -9,6 +9,12 @@ spring:
               connectTimeout: 5000
               readTimeout: 5000
 
+  kafka:
+    bootstrap-servers: kafka:29092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+
 server:
   port: 8082
 

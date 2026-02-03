@@ -5,14 +5,19 @@ spring:
   application:
     name: notification-service
   kafka:
-    bootstrap-servers: kafka:29092
-    consumer:
-      group-id: notification-group
-      auto-offset-reset: earliest
-      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
-      properties:
-        spring.json.trusted.packages: "*" # IMPORTANT: Accepte tous les objets JSON
+      bootstrap-servers: kafka:29092
+      consumer:
+        group-id: notification-group
+        auto-offset-reset: earliest
+        key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+        value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+        properties:
+          # TRES IMPORTANT : Autorise la conversion sans header de type
+          spring.json.use.type.headers: false
+          # IMPORTANT : Mappe tout sur l'objet attendu
+          spring.json.value.default.type: com.devbuild.notificationservice.event.UserCreatedEvent
+          # Autorise tous les packages
+          spring.json.trusted.packages: "*"
 
   # Database settings...
   jpa:
